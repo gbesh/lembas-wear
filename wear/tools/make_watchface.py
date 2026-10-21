@@ -1,13 +1,15 @@
 """Build the Lembas watch face (Watch Face Format) for round Wear OS watches.
 
-Renders the still layers and sprites from wear/art/watch.html, makes fixed-weight copies of the
+Renders the backgrounds and sprites from wear/art/watch.html, makes fixed-weight copies of the
 fonts, then writes watchface/src/main/res/raw/watchface.xml. Everything that moves is described
 declaratively, so the watch's own renderer animates it (and stops in ambient mode); there is no
 code on the watch.
 
-Layout (450 x 450, round): the Shire date curves around the top, then the day and date, a large
-time, the hobbit mealtime, and two large complications that sit low on the face like round doors.
-The night looks are black, which costs next to nothing on an OLED screen.
+The design: deep tonal (or black) backgrounds in the four Lembas palettes; large stacked numerals,
+the hours heavy in the look's colour and the minutes light; a complication either side; and a
+24-hour sun ring around the rim, where the sun (or tonight's moon) travels from sunrise on the
+left, over noon at the top, to sunset on the right. The Shire date and the hobbit mealtime sit
+above and below the time as quiet lines of type.
 
 Usage: python make_watchface.py [watchface_res_dir] [wear_app_res_dir] [--preview out_dir]
 """
@@ -30,19 +32,17 @@ C = S / 2
 
 # part -> (width, height) of the rendered PNG
 PARTS = {
-    "starlit-back": (450, 450), "moonglow": (90, 90), **{f"moon{i}": (44, 44) for i in range(8)},
-    "shire-back": (450, 450), "rays": (130, 130), "sun": (120, 120), "cloud-a": (100, 40), "cloud-b": (70, 28),
-    "redbook-back": (450, 450), "warmglow": (300, 220),
-    "elven-back": (450, 450), "halo": (80, 80), "glint": (24, 24), "glyph": (32, 32),
+    "shire-back": (450, 450), "redbook-back": (450, 450), "starlit-back": (450, 450), "elven-back": (450, 450),
+    "ticks": (450, 450), "ticks-major": (450, 450), "arc-day": (450, 450), "arc-night": (450, 450),
+    "sun": (40, 40), "moonhalo": (40, 40), **{f"moon{i}": (18, 18) for i in range(8)},
 }
 
-# Fixed-weight cuts of the variable fonts (renderers don't all honour weight on variable fonts)
+# Fixed-weight cuts of the variable fonts (renderers don't all honour weight on variable fonts),
+# with lining figures baked in
 STATIC_FONTS = {
-    "fraunces_display": ("fraunces.ttf", {"wght": 620, "opsz": 144, "SOFT": 0, "WONK": 0}),
-    "fraunces_text": ("fraunces_italic.ttf", {"wght": 600, "opsz": 36, "SOFT": 0, "WONK": 0}),
-    "cormorant_display": ("cormorant.ttf", {"wght": 620}),
-    "cormorant_text": ("cormorant_italic.ttf", {"wght": 650}),
-    "cinzel_label": ("cinzel.ttf", {"wght": 700}),
+    "numerals_heavy": ("fraunces.ttf", {"wght": 760, "opsz": 144, "SOFT": 50, "WONK": 0}),
+    "numerals_light": ("fraunces.ttf", {"wght": 280, "opsz": 144, "SOFT": 50, "WONK": 0}),
+    "lore_italic": ("fraunces_italic.ttf", {"wght": 420, "opsz": 24, "SOFT": 50, "WONK": 0}),
 }
 
 
@@ -177,38 +177,33 @@ LOOK_EXPR = {
 }
 
 
-# ------------------------------------------------------------------ layout
-ARC_R = 190                      # the curved Shire date, around the top
-DATE_BOX = (80, 84, 290, 32)
-TIME_BOX = (10, 106, 430, 168)
-MEAL_BOX = (50, 268, 350, 38)
-COMP_D = 100
-COMPS = [(0, 113, 306, "WATCH_BATTERY", "Left"), (1, 237, 306, "STEP_COUNT", "Right")]
+HOUR_Z = "([IS_24_HOUR_MODE] ? [HOUR_0_23_Z] : [HOUR_1_12_Z])"
 
+# ------------------------------------------------------------------ layout
+DATE_BOX = (100, 58, 250, 32)      # Wed 21
+LORE_BOX = (60, 88, 330, 30)       # Hevensday · 30 Winterfilth
+HOURS_BOX = (90, 112, 270, 124)
+MINS_BOX = (90, 224, 270, 124)
+MEAL_BOX = (80, 348, 290, 30)
+RING_R = 209                       # where the sun and moon travel
+COMP_D = 80
+COMPS = [(0, 38, 185, "WATCH_BATTERY", "Left"), (1, 332, 185, "STEP_COUNT", "Right")]
+NUM_SIZE = 150
+
+# Each look: hours (accent), minutes and date (text), Shire date, mealtime, the daylight half of
+# the ring, the night half, the ticks, and the complication background.
 STYLE = {
-    # fonts: arc, date, time, meal;  colours: arc, date, time, meal;  plate fill, plate ring
-    "shire": dict(fonts=("alegreya_sans", "alegreya_sans", "fraunces_display", "fraunces_text"),
-                  sizes=(21, 24, 150, 28), spacing=(0.12, 0.04),
-                  colors=("#FF3E5A2E", "#FF3E5A2E", "#FF22391F", "#FF22391F"),
-                  plate=("#FF2E5E3A", "#FFC9B48A", 4.0), upper_arc=True),
-    "redbook": dict(fonts=("fell_sc", "fell_sc", "fell", "fell_italic"),
-                    sizes=(23, 25, 150, 29), spacing=(0.06, 0.03),
-                    colors=("#FF8E2416", "#FF4E3A22", "#FF22170D", "#FF8E2416"),
-                    plate=("#FF8A2A1C", "#FF5E180F", 3.0), upper_arc=False),
-    "starlit": dict(fonts=("cinzel_label", "cinzel_label", "cormorant_display", "cormorant_text"),
-                    sizes=(19, 20, 160, 29), spacing=(0.1, 0.14),
-                    colors=("#FFE6C987", "#FFD2CAB6", "#FFFAF3E2", "#FFE6C987"),
-                    plate=("#FF000000", "#FF4A5578", 2.0), upper_arc=True),
-    "elven": dict(fonts=("cinzel_label", "cinzel_label", "cormorant_display", "cormorant_text"),
-                  sizes=(19, 20, 160, 29), spacing=(0.1, 0.14),
-                  colors=("#FFBCCAD0", "#FFA3AFB5", "#FFF2F6F7", "#FFBFD7E3"),
-                  plate=("#FF000000", "#FF6A777E", 1.6), upper_arc=True),
+    "shire": dict(back="shire-back", hours="#FFF2D06B", text="#FFF1F4E6", lore="#FFB9D79A", meal="#FFA3B59B",
+                  day="#CCF2D06B", night="#4DB9D79A", ticks="#99F1F4E6", plate="#2EB9D79A"),
+    "redbook": dict(back="redbook-back", hours="#FFF07A62", text="#FFF6ECD6", lore="#FFE6C79A", meal="#FFC2A08A",
+                    day="#CCF07A62", night="#4DF6ECD6", ticks="#99F6ECD6", plate="#2EF07A62"),
+    "starlit": dict(back="starlit-back", hours="#FFE9CC88", text="#FFF6F0E2", lore="#FFA9BCE6", meal="#FF8E97B0",
+                    day="#99E9CC88", night="#66A9BCE6", ticks="#80F6F0E2", plate="#24FFFFFF"),
+    "elven": dict(back="elven-back", hours="#FFC6DDE8", text="#FFF4F7F8", lore="#FFA2B3BB", meal="#FF7F8C93",
+                  day="#80C6DDE8", night="#59C6DDE8", ticks="#73F4F7F8", plate="#1FFFFFFF"),
 }
-AMBIENT = dict(fonts=("cinzel_label", "cinzel_label", "cormorant_display", "cormorant_text"),
-               sizes=(19, 20, 160, 29), spacing=(0.1, 0.14),
-               colors=("#FF9A9A9A", "#FF808080", "#FFD8D8D8", "#FF9A9A9A"))
-COMP_TEXT = "#FFF6EEDC"
-COMP_ACCENT = "#FFE2B65A"
+AMBIENT = dict(hours="#FFB4B4B4", text="#FFD2D2D2", lore="#FF8A8A8A", ticks="#FF6A6A6A")
+COMP_TEXT = "#FFF4F4F4"
 
 
 # ------------------------------------------------------------------ XML helpers
@@ -220,22 +215,22 @@ def tr(target, value):
     return f'<Transform target="{target}" value="{a(value)}"/>'
 
 
-def glide(target, value, fps=12, interp="LINEAR", extra=""):
-    """A transform the watch animates smoothly over one second whenever its value changes."""
-    return (f'<Transform target="{target}" value="{a(value)}"><Animation duration="1" interpolation="{interp}" '
-            f'fps="{fps}" repeat="0"{extra}/></Transform>')
+def glide(target, value, fps=12, interp="LINEAR", dur=1):
+    """A transform the watch animates smoothly whenever its value changes."""
+    return (f'<Transform target="{target}" value="{a(value)}"><Animation duration="{dur}" interpolation="{interp}" '
+            f'fps="{fps}" repeat="0"/></Transform>')
 
 
 AMBIENT_OFF = '<Variant mode="AMBIENT" target="alpha" value="0"/>'
 
 
-def image(name, x, y, w, h, transforms="", extra="", pivot_y=0.5):
-    return (f'<PartImage x="{round(x)}" y="{round(y)}" width="{w}" height="{h}" pivotX="0.5" pivotY="{pivot_y:g}"{extra}>'
+def image(name, x, y, w, h, transforms="", extra=""):
+    return (f'<PartImage x="{round(x)}" y="{round(y)}" width="{w}" height="{h}" pivotX="0.5" pivotY="0.5"{extra}>'
             f'{transforms}<Image resource="{res_name(name)}"/></PartImage>')
 
 
 def dot(x, y, r, color, transforms=""):
-    s = math.ceil(r * 2 + 2)              # parts sit on whole pixels; the ellipse inside can be fractional
+    s = math.ceil(r * 2 + 2)
     pad = (s - r * 2) / 2
     return (f'<PartDraw x="{round(x - s / 2)}" y="{round(y - s / 2)}" width="{s}" height="{s}" pivotX="0.5" pivotY="0.5">{transforms}'
             f'<Ellipse x="{pad:.2f}" y="{pad:.2f}" width="{r * 2:.2f}" height="{r * 2:.2f}"><Fill color="{color}"/></Ellipse></PartDraw>')
@@ -254,121 +249,81 @@ def text(box, family, size, color, template, params, slant="NORMAL", spacing=Non
             f'{font(family, size, color, template, params, slant, spacing)}</Text></PartText>')
 
 
-def arc_text(family, size, color, template, params, spacing):
-    d = ARC_R * 2
-    return (f'<PartText x="0" y="0" width="{S}" height="{S}"><TextCircular centerX="{C:g}" centerY="{C:g}" width="{d}" height="{d}" '
-            f'startAngle="296" endAngle="64" direction="CLOCKWISE" align="CENTER" ellipsis="TRUE">'
-            f'{font(family, size, color, template, params, spacing=spacing)}</TextCircular></PartText>')
-
-
 def group(name, body, extra=""):
     return f'<Group name="{name}" x="0" y="0" width="{S}" height="{S}"{extra}>{body}</Group>'
 
 
-def ring(cx, cy, d, color, width, fill=None):
-    s = math.ceil(d + width + 2)
+def disc(cx, cy, d, fill):
+    s = math.ceil(d + 2)
     o = (s - d) / 2
-    fl = f'<Fill color="{fill}"/>' if fill else ""
-    st = f'<Stroke color="{color}" thickness="{width:g}"/>' if width else ""
     return (f'<PartDraw x="{round(cx - s / 2)}" y="{round(cy - s / 2)}" width="{s}" height="{s}">'
-            f'<Ellipse x="{o:.2f}" y="{o:.2f}" width="{d:.2f}" height="{d:.2f}">{fl}{st}</Ellipse></PartDraw>')
+            f'<Ellipse x="{o:.2f}" y="{o:.2f}" width="{d:.2f}" height="{d:.2f}"><Fill color="{fill}"/></Ellipse></PartDraw>')
 
 
-# ------------------------------------------------------------------ the four looks
-def lines(st):
-    """The words on the face, for one look (or the ambient style)."""
-    f_arc, f_date, f_time, f_meal = st["fonts"]
-    s_arc, s_date, s_time, s_meal = st["sizes"]
-    c_arc, c_date, c_time, c_meal = st["colors"]
-    upper = st.get("upper_arc", True)
-    out = arc_text(f_arc, s_arc, c_arc, "%s · %s %s", [WD_UP if upper else WD, SHIRE_DAY, shire_name(upper)], st["spacing"][0])
-    out += text(DATE_BOX, f_date, s_date, c_date, "%s %s %s", ["[DAY_OF_WEEK_S]", "[DAY]", "[MONTH_S]"], spacing=st["spacing"][1])
-    out += text(TIME_BOX, f_time, s_time, c_time, "%s:%s", [HOUR, "[MINUTE_Z]"])
-    if "meal" not in st.get("skip", ()):
-        out += text(MEAL_BOX, f_meal, s_meal, c_meal, "%s", [MEAL], slant="ITALIC")
-    return out
+def tinted(name, color):
+    return image(name, 0, 0, S, S, extra=f' tintColor="{color}"')
 
 
-def plates(look):
-    fill, edge, width = STYLE[look]["plate"]
-    out = ""
-    for _, x, y, _, _ in COMPS:
-        cx, cy = x + COMP_D / 2, y + COMP_D / 2
-        out += ring(cx, cy, COMP_D - width, edge, width, fill)
-        if look == "shire":    # a round door: a brass knob
-            out += dot(cx + 34, cy + 8, 3, "#FFE2B64A")
-        if look == "redbook":  # a wax seal: an inner ring pressed into it
-            out += ring(cx, cy, COMP_D - 14, "#55F3E8CD", 1)
-    return out
+# ------------------------------------------------------------------ the face
+def ring_xy(w):
+    """x and y (for a sprite w wide) on the sun ring for the time of day: midnight at the bottom, noon at the top."""
+    ang = f"rad({MINS} * 0.25 + 180)"
+    return f"{C - w / 2:g} + {RING_R} * sin({ang})", f"{C - w / 2:g} - {RING_R} * cos({ang})"
 
 
-def starlit(southern):
-    rnd = random.Random(1954)
-    s = image("starlit-back", 0, 0, 450, 450)
-    spots = [(40, 150), (402, 170), (420, 268), (132, 46), (318, 48), (360, 130), (392, 226)]
-    for x, y in spots:
-        r = rnd.uniform(1.2, 2.0)
-        col = rnd.choice(["#FFF4F1E8", "#FFF4F1E8", "#FFFFE2B0", "#FFBFD4FF"])
-        s += dot(x, y, r, col, glide("alpha", f"50 + 205 * {wave(rnd.randint(4, 8), rnd.randint(0, 7))}", fps=10))
-    # the moon, low on the left over the hills, in its real phase (0 new .. 4 full .. 7)
-    mx, my = 50, 296
-    s += image("moonglow", mx - 23, my - 23, 90, 90)
+def moon(southern):
+    mx, my = ring_xy(18)
     idx = "(floor(([MOON_PHASE_POSITION] + 1.75) / 3.5) % 8)"
     flip = ' scaleX="-1"' if southern else ""
-    cases = "".join(f'<Compare expression="m{i}">{image(f"moon{i}", mx, my, 44, 44, extra=flip)}</Compare>' for i in range(1, 8))
+    moon_img = lambda i: image(f"moon{i}", 0, 0, 18, 18, glide("x", mx) + glide("y", my), extra=flip)
+    cases = "".join(f'<Compare expression="m{i}">{moon_img(i)}</Compare>' for i in range(1, 8))
     exprs = "".join(f'<Expression name="m{i}"><![CDATA[{idx} == {i}]]></Expression>' for i in range(1, 8))
-    s += f'<Condition><Expressions>{exprs}</Expressions>{cases}<Default>{image("moon0", mx, my, 44, 44, extra=flip)}</Default></Condition>'
-    return s
+    return f'<Condition><Expressions>{exprs}</Expressions>{cases}<Default>{moon_img(0)}</Default></Condition>'
 
 
-def shire():
-    s = image("shire-back", 0, 0, 450, 450)
-    sx, sy = 352, 140
-    s += image("rays", sx - 65, sy - 65, 130, 130, glide("angle", f"({T} * 2.4) % 360", fps=10, extra=' angleDirection="CLOCKWISE"'))
-    s += image("sun", sx - 60, sy - 60, 120, 120)
-    for name, x, y, w, h, dur in (("cloud-a", 40, 168, 100, 40, 40), ("cloud-b", 300, 226, 70, 28, 52)):   # drifting to and fro
-        s += image(name, x, y, w, h, glide("x", f"{x} + 26 * sin(6.28319 * {phase(dur)})", fps=8))
-    return s
+def sky_marker():
+    """The sun on the ring by day; by night, the moon in tonight's phase (mirrored in the south)."""
+    sx, sy = ring_xy(40)
+    sun = image("sun", 0, 0, 40, 40, glide("x", sx) + glide("y", sy) + glide("alpha", f"200 + 55 * {wave(6)}", fps=8))
+    hx, hy = ring_xy(40)
+    night = (image("moonhalo", 0, 0, 40, 40, glide("x", hx) + glide("y", hy))
+             + group("moon", f'<BooleanConfiguration id="southern"><BooleanOption id="TRUE">{group("moon-s", moon(True))}</BooleanOption>'
+                             f'<BooleanOption id="FALSE">{group("moon-n", moon(False))}</BooleanOption></BooleanConfiguration>'))
+    return (f'<Condition><Expressions><Expression name="day"><![CDATA[{IS_DAY} == 1]]></Expression></Expressions>'
+            f'<Compare expression="day">{sun}</Compare><Default>{group("night", night)}</Default></Condition>')
 
 
-def redbook():
-    s = image("redbook-back", 0, 0, 450, 450)
-    s += image("warmglow", 75, 84, 300, 220, glide("alpha", f"120 + 135 * {wave(9)}", fps=8))
-    return s
+def twinkles(look):
+    if look not in ("starlit", "elven"):
+        return ""
+    rnd = random.Random(7 if look == "starlit" else 8)
+    spots = [(118, 64), (334, 70), (64, 132), (390, 140), (70, 318), (384, 312)]
+    return "".join(dot(x, y, rnd.uniform(1.1, 1.7), "#FFF4F1E8", glide("alpha", f"40 + 215 * {wave(rnd.randint(4, 8), rnd.randint(0, 7))}", fps=8))
+                   for x, y in spots)
 
 
-def elven():
-    rnd = random.Random(1955)
-    s = image("elven-back", 0, 0, 450, 450)
-    # a glint of light travels slowly round the silver rim, once a minute
-    th = f"(6.28319 * {phase(60)})"
-    s += image("glint", 0, 0, 24, 24, glide("x", f"{C - 12:g} + 216 * sin({th})", fps=20) + glide("y", f"{C - 12:g} - 216 * cos({th})", fps=20))
-    # the star of Eärendil, low between the complications
-    sx, sy = 225, 418
-    s += image("halo", sx - 40, sy - 40, 80, 80, glide("alpha", f"120 + 135 * {wave(6)}", fps=10))
-    s += image("glyph", sx - 16, sy - 16, 32, 32)
-    for i in range(4):   # motes of light drifting up the sides
-        x = rnd.choice([rnd.uniform(40, 90), rnd.uniform(360, 410)])
-        y = rnd.uniform(220, 360)
-        pp = phase(rnd.randint(12, 20), rnd.randint(0, 16))
-        al = f"clamp({pp} / 0.2, 0, 1) * clamp((1 - {pp}) / 0.2, 0, 1)"
-        s += dot(x, y, 1.4, "#FFDCEBF0", glide("y", f"{y - 2.4:.1f} - 120 * {pp}", fps=10) + glide("alpha", f"200 * {al}", fps=10))
-    return s
+def words(st, ambient=False):
+    out = text(DATE_BOX, "alegreya_sans", 24, st["text"], "%s %s", ["[DAY_OF_WEEK_S]", "[DAY]"], spacing=0.02)
+    out += text(LORE_BOX, "lore_italic", 21, st["lore"], "%s · %s %s", [WD, SHIRE_DAY, shire_name()], slant="ITALIC")
+    out += text(HOURS_BOX, "numerals_light" if ambient else "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z])
+    out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"])
+    if not ambient:
+        out += text(MEAL_BOX, "lore_italic", 20, st["meal"], "%s", [MEAL], slant="ITALIC")
+    return out
 
 
 def look_group(look):
-    if look == "starlit":
-        scene = (f'<BooleanConfiguration id="southern"><BooleanOption id="TRUE">{group("starlit-s", starlit(True))}</BooleanOption>'
-                 f'<BooleanOption id="FALSE">{group("starlit-n", starlit(False))}</BooleanOption></BooleanConfiguration>')
-    else:
-        scene = {"shire": shire, "redbook": redbook, "elven": elven}[look]()
-    return group(look, group(f"{look}-scene", AMBIENT_OFF + scene + plates(look)) + group(f"{look}-text", AMBIENT_OFF + lines(STYLE[look])))
+    st = STYLE[look]
+    scene = image(st["back"], 0, 0, S, S) + twinkles(look)
+    scene += tinted("arc-night", st["night"]) + tinted("arc-day", st["day"]) + tinted("ticks", st["ticks"])
+    scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
+    scene += sky_marker()
+    return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st)))
 
 
 def ambient_group():
-    """The always-on display: thin rings for the complications, the time and the Shire date, in grey on black."""
-    out = "".join(ring(x + COMP_D / 2, y + COMP_D / 2, COMP_D - 2, "#FF4A4A4A", 1.4) for _, x, y, _, _ in COMPS)
-    out += lines(dict(AMBIENT, skip=("meal",)))
+    """The always-on display: the hours and minutes in light grey numerals, the four main ticks and the date."""
+    out = tinted("ticks-major", AMBIENT["ticks"]) + words(AMBIENT, ambient=True)
     return f'<Group name="ambient" x="0" y="0" width="{S}" height="{S}" alpha="0"><Variant mode="AMBIENT" target="alpha" value="255"/>{out}</Group>'
 
 
@@ -376,12 +331,12 @@ def complication(slot, x, y, provider, label):
     d = COMP_D
     icon = lambda ix, iy, s: (f'<PartImage x="{ix}" y="{iy}" width="{s}" height="{s}" tintColor="{COMP_TEXT}">'
                               f'<Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/></PartImage>')
-    short = icon(34, 14, 32) + text((4, 48, d - 8, 38), "alegreya_sans", 31, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"])
+    short = icon(28, 12, 24) + text((4, 38, d - 8, 30), "alegreya_sans", 25, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"])
     frac = "clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"
-    arc = lambda color, extra: (f'<PartDraw x="0" y="0" width="{d}" height="{d}"><Arc centerX="{d / 2:g}" centerY="{d / 2:g}" width="{d - 12}" height="{d - 12}" startAngle="0" endAngle="360">'
-                                f'{extra}<Stroke color="{color}" thickness="5" cap="ROUND"/></Arc></PartDraw>')
-    ranged = (arc("#40FFFFFF", "") + arc(COMP_ACCENT, tr("endAngle", f"360 * {frac}"))
-              + icon(37, 18, 26) + text((8, 44, d - 16, 36), "alegreya_sans", 28, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"]))
+    arc = lambda color, extra: (f'<PartDraw x="0" y="0" width="{d}" height="{d}"><Arc centerX="{d / 2:g}" centerY="{d / 2:g}" width="{d - 6}" height="{d - 6}" startAngle="0" endAngle="360">'
+                                f'{extra}<Stroke color="{color}" thickness="4" cap="ROUND"/></Arc></PartDraw>')
+    ranged = (arc("#33FFFFFF", "") + arc(COMP_TEXT, tr("endAngle", f"360 * {frac}"))
+              + icon(29, 13, 22) + text((8, 36, d - 16, 28), "alegreya_sans", 23, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"]))
     return (f'<ComplicationSlot slotId="{slot}" name="slot{slot}" displayName="{label}" x="{x}" y="{y}" width="{d}" height="{d}" '
             f'supportedTypes="SHORT_TEXT RANGED_VALUE EMPTY" isCustomizable="TRUE">'
             f'<DefaultProviderPolicy defaultSystemProvider="{provider}" defaultSystemProviderType="SHORT_TEXT"/>'
@@ -416,77 +371,72 @@ def watchface_xml():
 
 
 # ------------------------------------------------------------------ still pictures (picker preview, app backgrounds, checks)
-STILLS = {
-    "shire": [("shire-back", 0, 0), ("rays", 287, 75), ("sun", 292, 80), ("cloud-a", 40, 168), ("cloud-b", 300, 226)],
-    "redbook": [("redbook-back", 0, 0), ("warmglow", 75, 84)],
-    "starlit": [("starlit-back", 0, 0), ("moonglow", 27, 273), ("moon3", 50, 296)],
-    "elven": [("elven-back", 0, 0), ("halo", 185, 378), ("glyph", 209, 402), ("glint", 360, 60)],
-}
-SAMPLE = {
-    "shire": ("9:21", "HEVENSDAY · 30 WINTERFILTH", "Wed 21 Oct", "Second breakfast", ("80%", "4,512")),
-    "redbook": ("3:30", "Hevensday · 30 Winterfilth", "Wed 21 Oct", "Afternoon tea", ("64%", "9,870")),
-    "starlit": ("8:05", "HEVENSDAY · 30 WINTERFILTH", "WED 21 OCT", "Supper", ("41%", "11,204")),
-    "elven": ("1:30", "HEVENSDAY · 30 WINTERFILTH", "WED 21 OCT", "The Shire sleeps", ("23%", "12,640")),
-    "ambient": ("1:30", "HEVENSDAY · 30 WINTERFILTH", "WED 21 OCT", None, ("23%", "12,640")),
+SAMPLE = {   # look: (time minutes past midnight, hours, minutes, date, Shire date, meal, complications)
+    "shire": (561, "09", "21", "Wed 21", "Hevensday · 30 Winterfilth", "Second breakfast", ("80%", "4,512")),
+    "redbook": (930, "03", "30", "Wed 21", "Hevensday · 30 Winterfilth", "Afternoon tea", ("64%", "9,870")),
+    "starlit": (1205, "08", "05", "Wed 21", "Hevensday · 30 Winterfilth", "Supper", ("41%", "11,204")),
+    "elven": (90, "01", "30", "Wed 21", "Hevensday · 30 Winterfilth", "The Shire sleeps", ("23%", "12,640")),
+    "ambient": (90, "01", "30", "Wed 21", "Hevensday · 30 Winterfilth", None, ("23%", "12,640")),
 }
 
 
 def still(look, with_words=True):
     from PIL import Image, ImageDraw, ImageFont
     src = RES / "drawable-nodpi"
+    fonts = RES / "font"
+    hexc = lambda c: (int(c[3:5], 16), int(c[5:7], 16), int(c[7:9], 16), int(c[1:3], 16))
     img = Image.new("RGBA", (S, S), (0, 0, 0, 255))
-    if look in STILLS:
-        for name, x, y in STILLS[look]:
-            img.alpha_composite(Image.open(src / f"{res_name(name)}.png").convert("RGBA"), (x, y))
+    load = lambda n: Image.open(src / f"{res_name(n)}.png").convert("RGBA")
+
+    def tint(n, col):
+        im = load(n)
+        r, g, b, al = hexc(col)
+        solid = Image.new("RGBA", im.size, (r, g, b, 255))
+        solid.putalpha(Image.eval(im.getchannel("A"), lambda v: v * al // 255))
+        img.alpha_composite(solid)
+
+    mins, hh, mm, date, lore, meal, comps = SAMPLE[look]
+    st = STYLE.get(look)
+    if st:
+        img.alpha_composite(load(st["back"]))
+        tint("arc-night", st["night"]); tint("arc-day", st["day"]); tint("ticks", st["ticks"])
+    else:
+        st = AMBIENT
+        tint("ticks-major", AMBIENT["ticks"])
     if not with_words:
         return img
     dr = ImageDraw.Draw(img)
-    fonts = RES / "font"
-    hexc = lambda c: (int(c[3:5], 16), int(c[5:7], 16), int(c[7:9], 16), int(c[1:3], 16))
-    st = STYLE.get(look, AMBIENT)
+    if look != "ambient":
+        layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+        for _, x, y, _, _ in COMPS:
+            ImageDraw.Draw(layer).ellipse((x, y, x + COMP_D, y + COMP_D), fill=hexc(st["plate"]))
+        img.alpha_composite(layer)
+        ang = math.radians(mins * 0.25 + 180)
+        day = 360 <= mins < 1080
+        n = "sun" if day else "moon3"
+        w = 40 if day else 18
+        if not day:
+            img.alpha_composite(load("moonhalo"), (int(C - 20 + RING_R * math.sin(ang)), int(C - 20 - RING_R * math.cos(ang))))
+        img.alpha_composite(load(n), (int(C - w / 2 + RING_R * math.sin(ang)), int(C - w / 2 - RING_R * math.cos(ang))))
 
-    def box_text(box, fam, size, col, s, spacing=0.0):
+    def box_text(box, fam, size, col, s):
         x, y, w, h = box
         f = ImageFont.truetype(str(fonts / f"{fam}.ttf"), size)
         asc, desc = f.getmetrics()
-        widths = [f.getlength(ch) for ch in s]
-        total = sum(widths) + spacing * size * (len(s) - 1)
-        cx = x + (w - total) / 2
-        top = y + (h - (asc + desc)) / 2
-        for ch, cw in zip(s, widths):
-            dr.text((cx, top), ch, font=f, fill=hexc(col))
-            cx += cw + spacing * size
+        tw = f.getlength(s)
+        dr.text((x + (w - tw) / 2, y + (h - (asc + desc)) / 2), s, font=f, fill=hexc(col))
 
-    def curve(fam, size, col, s, spacing):
-        f = ImageFont.truetype(str(fonts / f"{fam}.ttf"), size)
-        asc, desc = f.getmetrics()
-        widths = [f.getlength(ch) + spacing * size for ch in s]
-        ang = -sum(widths) / 2 / ARC_R
-        for ch, cw in zip(s, widths):
-            g = Image.new("RGBA", (int(cw + 4) * 2, (asc + desc) * 2), (0, 0, 0, 0))
-            ImageDraw.Draw(g).text((g.width / 2 - (cw - spacing * size) / 2, g.height / 2 - asc), ch, font=f, fill=hexc(col))
-            mid = ang + cw / 2 / ARC_R
-            g = g.rotate(-math.degrees(mid), resample=Image.BICUBIC)
-            px, py = C + ARC_R * math.sin(mid), C - ARC_R * math.cos(mid)
-            img.alpha_composite(g, (int(px - g.width / 2), int(py - g.height / 2)))
-            ang += cw / ARC_R
-
-    t, arc, date, meal, comps = SAMPLE[look]
-    if look != "ambient":
-        fill, edge, width = st["plate"]
-        for _, x, y, _, _ in COMPS:
-            dr.ellipse((x + width / 2, y + width / 2, x + COMP_D - width / 2, y + COMP_D - width / 2), fill=hexc(fill), outline=hexc(edge), width=round(width))
-    else:
-        for _, x, y, _, _ in COMPS:
-            dr.ellipse((x, y, x + COMP_D, y + COMP_D), outline=(74, 74, 74, 255), width=1)
-    curve(st["fonts"][0], st["sizes"][0], st["colors"][0], arc, st["spacing"][0])
-    box_text(DATE_BOX, st["fonts"][1], st["sizes"][1], st["colors"][1], date, st["spacing"][1])
-    box_text(TIME_BOX, st["fonts"][2], st["sizes"][2], st["colors"][2], t)
+    amb = look == "ambient"
+    box_text(DATE_BOX, "alegreya_sans", 24, st["text"], date)
+    box_text(LORE_BOX, "lore_italic", 21, st["lore"], lore)
+    box_text(HOURS_BOX, "numerals_light" if amb else "numerals_heavy", NUM_SIZE, st["hours"], hh)
+    box_text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], mm)
     if meal:
-        box_text(MEAL_BOX, st["fonts"][3], st["sizes"][3], st["colors"][3], meal)
-    for (_, x, y, _, _), v in zip(COMPS, comps):
-        dr.ellipse((x + 42, y + 18, x + 58, y + 34), outline=hexc(COMP_TEXT), width=2)
-        box_text((x + 4, y + 48, COMP_D - 8, 38), "alegreya_sans", 31, COMP_TEXT, v)
+        box_text(MEAL_BOX, "lore_italic", 20, st["meal"], meal)
+    if not amb:
+        for (_, x, y, _, _), v in zip(COMPS, comps):
+            dr.ellipse((x + 33, y + 15, x + 47, y + 31), outline=hexc(COMP_TEXT), width=2)
+            box_text((x + 4, y + 38, COMP_D - 8, 30), "alegreya_sans", 25, COMP_TEXT, v)
     mask = Image.new("L", (S, S), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, S - 1, S - 1), fill=255)
     out = Image.new("RGBA", (S, S), (0, 0, 0, 255))
@@ -501,8 +451,8 @@ def write_stills(wear_res):
     if wear_res:
         out = Path(wear_res) / "drawable-nodpi"
         out.mkdir(parents=True, exist_ok=True)
-        for look in STILLS:
-            still(look, with_words=False).convert("RGB").save(out / f"wl_{look}.png", optimize=True)
+        for look in STYLE:   # the watch app's backgrounds: the look's light, without the words
+            Image.open(nodpi / f"{res_name(STYLE[look]['back'])}.png").convert("RGB").save(out / f"wl_{look}.png", optimize=True)
         Image.open(nodpi / "wf_preview.png").save(out / "tile_preview.png")
     if PREVIEW:
         p = Path(PREVIEW)
