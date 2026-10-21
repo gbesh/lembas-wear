@@ -94,13 +94,12 @@ class LembasTile : TileService() {
             .build()
 
     private fun layout(look: WearLook, now: LocalDateTime): LayoutElementBuilders.LayoutElement {
-        val bg = if (look.dark) 0xFF0B1020 else 0xFFF6EFDD
+        val bg = look.tileBackground
         val col = LayoutElementBuilders.Column.Builder()
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-            .addContent(text(Lore.quenya(now.hour).uppercase(), 12f, look.accent))
+            .addContent(text(Lore.shireWeekday(now.dayOfWeek).uppercase(), 12f, look.accent))
             .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(2f)).build())
-            .addContent(text("${Lore.shireWeekday(now.dayOfWeek)}, ${Lore.shireDate(now.toLocalDate())}", 15f,
-                if (look.dark) look.accent else look.text, italic = true))
+            .addContent(text(Lore.shireDate(now.toLocalDate()), 17f, look.lore, italic = true))
             .addContent(text(Lore.meal(now.hour), 13f, look.soft, italic = true))
             .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(10f)).build())
 
@@ -117,7 +116,6 @@ class LembasTile : TileService() {
                             .setColor(argb(look.surface.toInt()))
                             .setCorner(ModifiersBuilders.Corner.Builder().setRadius(dp(21f)).build())
                             .build())
-                        .setBorder(ModifiersBuilders.Border.Builder().setWidth(dp(1f)).setColor(argb(look.ring.toInt())).build())
                         .build())
                     .addContent(LayoutElementBuilders.Image.Builder().setResourceId("app$i").setWidth(dp(32f)).setHeight(dp(32f)).build())
                     .build())

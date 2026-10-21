@@ -15,13 +15,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -132,20 +134,27 @@ object Apps {
 private fun Long.c() = Color(this.toInt())
 
 private fun scheme(look: WearLook): ColorScheme {
-    val accent = look.accent.c()
     val surface = look.surface.c()
     return ColorScheme(
-        primary = accent,
-        onPrimary = if (look.dark) Color(0xFF101010) else Color(0xFFFFFBF2),
+        primary = look.accent.c(),
+        onPrimary = Color(0xFF101010),
         primaryContainer = surface,
-        onPrimaryContainer = look.onSurface.c(),
+        onPrimaryContainer = look.text.c(),
         surfaceContainer = surface,
         onSurface = look.text.c(),
         onSurfaceVariant = look.soft.c(),
-        background = if (look.dark) Color.Black else Color(0xFFF6EFDD),
+        background = Color.Black,
         onBackground = look.text.c(),
     )
 }
+
+/** The watch face's type: heavy and light numerals, an italic for the lore, a clean sans for labels. */
+private class Type(
+    val heavy: FontFamily = FontFamily(Font(R.font.numerals_heavy)),
+    val light: FontFamily = FontFamily(Font(R.font.numerals_light)),
+    val lore: FontFamily = FontFamily(Font(R.font.lore_italic, style = FontStyle.Italic)),
+    val label: FontFamily = FontFamily(Font(R.font.alegreya_sans)),
+)
 
 @Composable
 fun LembasApp() {
@@ -165,29 +174,25 @@ fun LembasApp() {
         val byKey = apps.associateBy { it.component.flattenToString() }
         Apps.recentKeys(ctx).mapNotNull { byKey[it] }.take(4)
     }
-    val serif = remember(look) { FontFamily(Font(look.serif)) }
-    val italic = remember(look) { FontFamily(Font(look.italic, style = FontStyle.Italic)) }
-    val label = remember(look) { FontFamily(Font(look.label)) }
+    val type = remember { Type() }
 
     MaterialTheme(colorScheme = scheme(look)) {
         AppScaffold {
             val state = rememberTransformingLazyColumnState()
             ScreenScaffold(scrollState = state) { padding ->
-                Box(Modifier.fillMaxSize().background(if (look.dark) Color.Black else Color(0xFFF6EFDD))) {
+                Box(Modifier.fillMaxSize().background(Color.Black)) {
                     Image(painterResource(look.background), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    // A veil so the list stays readable over the scene
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                        if (look.dark) listOf(Color(0x00000000), Color(0x66000000), Color(0xAA000000))
-                        else listOf(Color(0x00FFFFFF), Color(0x55FFF8EA), Color(0x99FFF8EA)))))
+                    // Darker further down, so the list stays calm and readable
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x00000000), Color(0x80000000), Color(0xCC000000)))))
                     TransformingLazyColumn(state = state, contentPadding = padding, modifier = Modifier.fillMaxSize()) {
-                        item { Header(look, now, serif, italic, label) }
+                        item { Header(look, now, type) }
                         if (recents.isNotEmpty()) {
-                            item { ListHeader { Text("Lately", fontFamily = label, color = look.accent.c()) } }
+                            item { Heading(look, type, "Lately") }
                             items(recents, key = { "r" + it.component.flattenToString() }) { app -> AppButton(look, app) }
                         }
-                        item { ListHeader { Text(if (apps.isEmpty()) "Gathering your apps…" else "All apps", fontFamily = label, color = look.accent.c()) } }
+                        item { Heading(look, type, if (apps.isEmpty()) "Gathering your apps…" else "All apps") }
                         items(apps, key = { it.component.flattenToString() }) { app -> AppButton(look, app) }
-                        item { ListHeader { Text("Lembas", fontFamily = label, color = look.accent.c()) } }
+                        item { Heading(look, type, "Lembas") }
                         item {
                             val choice = WearLooks.choice(ctx)
                             SettingButton(look, "Look", if (choice == WearLook.AUTO) "Follows the sun (now ${look.title})" else look.title) {
@@ -209,15 +214,26 @@ fun LembasApp() {
 }
 
 @Composable
-private fun Header(look: WearLook, now: LocalDateTime, serif: FontFamily, italic: FontFamily, label: FontFamily) {
+private fun Heading(look: WearLook, type: Type, title: String) {
+    ListHeader { Text(title.uppercase(), fontFamily = type.label, fontSize = 13.sp, letterSpacing = 1.5.sp, color = look.accent.c()) }
+}
+
+@Composable
+private fun Header(look: WearLook, now: LocalDateTime, type: Type) {
     val h24 = android.text.format.DateFormat.is24HourFormat(LocalContext.current)
-    val time = now.format(DateTimeFormatter.ofPattern(if (h24) "H:mm" else "h:mm"))
-    Column(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(Lore.quenya(now.hour).uppercase(), fontFamily = label, fontSize = 11.sp, letterSpacing = 2.sp, color = look.accent.c())
-        Text(time, fontFamily = serif, fontSize = 44.sp, color = look.text.c(), maxLines = 1)
-        Text("${Lore.shireWeekday(now.dayOfWeek)}, ${Lore.shireDate(now.toLocalDate())}", fontFamily = italic, fontStyle = FontStyle.Italic,
-            fontSize = 14.sp, color = if (look.dark) look.accent.c() else look.text.c(), textAlign = TextAlign.Center)
-        Text(Lore.meal(now.hour), fontFamily = italic, fontStyle = FontStyle.Italic, fontSize = 12.sp, color = look.soft.c())
+    val hours = now.format(DateTimeFormatter.ofPattern(if (h24) "HH" else "hh"))
+    val minutes = now.format(DateTimeFormatter.ofPattern("mm"))
+    val date = now.format(DateTimeFormatter.ofPattern("EEE d"))
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(date, fontFamily = type.label, fontSize = 14.sp, color = look.text.c())
+        Text("${Lore.shireWeekday(now.dayOfWeek)} · ${Lore.shireDate(now.toLocalDate())}", fontFamily = type.lore, fontStyle = FontStyle.Italic,
+            fontSize = 13.sp, color = look.lore.c(), textAlign = TextAlign.Center, maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(hours, fontFamily = type.heavy, fontSize = 50.sp, color = look.accent.c(), maxLines = 1)
+            Spacer(Modifier.width(6.dp))
+            Text(minutes, fontFamily = type.light, fontSize = 50.sp, color = look.text.c(), maxLines = 1)
+        }
+        Text(Lore.meal(now.hour), fontFamily = type.lore, fontStyle = FontStyle.Italic, fontSize = 12.sp, color = look.soft.c())
     }
 }
 
@@ -229,10 +245,8 @@ private fun AppButton(look: WearLook, app: AppItem) {
         onLongClick = { Apps.info(ctx, app) },
         onLongClickLabel = "App info",
         modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = look.surface.c(), contentColor = look.onSurface.c()),
-        icon = {
-            Image(app.icon, null, Modifier.size(28.dp).clip(CircleShape).border(1.dp, look.ring.c(), CircleShape))
-        },
+        colors = ButtonDefaults.buttonColors(containerColor = look.surface.c(), contentColor = look.text.c()),
+        icon = { Image(app.icon, null, Modifier.size(30.dp).clip(CircleShape)) },
         label = { Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
     )
 }
@@ -242,7 +256,7 @@ private fun SettingButton(look: WearLook, title: String, detail: String, onClick
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = look.surface.c(), contentColor = look.onSurface.c(),
+        colors = ButtonDefaults.buttonColors(containerColor = look.surface.c(), contentColor = look.text.c(),
             secondaryContentColor = look.soft.c()),
         secondaryLabel = { Text(detail, maxLines = 2) },
         label = { Text(title) },

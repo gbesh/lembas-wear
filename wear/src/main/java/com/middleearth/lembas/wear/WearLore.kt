@@ -13,41 +13,32 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
 
-/** One of the four looks, as the watch shows them. Colours are ARGB. */
+/**
+ * One of the four looks, as the watch shows them: the same palettes as the watch face, on deep
+ * tonal (day) or black (night) backgrounds. Colours are ARGB.
+ */
 class WearLook(
     val id: String,
     val title: String,
-    val dark: Boolean,
-    val background: Int,          // the look's scene, composed for a round screen
-    val text: Long,               // main text (time, names)
-    val accent: Long,             // labels, Shire date
-    val soft: Long,               // secondary text
-    val surface: Long,            // app button background
-    val onSurface: Long,
-    val ring: Long,               // ring around app icons
-    val serif: Int,               // font resources
-    val italic: Int,
-    val label: Int,
+    val background: Int,          // the look's light, for a round screen
+    val tileBackground: Long,     // a solid colour for the tile
+    val accent: Long,             // the hours, list headings, buttons
+    val text: Long,               // minutes, dates, app names
+    val lore: Long,               // the Shire date
+    val soft: Long,               // the mealtime, secondary text
+    val surface: Long,            // app and setting buttons
 ) {
     companion object {
         const val AUTO = "auto"
 
-        val SHIRE = WearLook("shire", "Shire Morning", false,
-            R.drawable.wl_shire,
-            0xFF2F4A2A, 0xFF6A7D4E, 0xFF6A7D4E, 0xD9FBF6E8, 0xFF2F4A2A, 0xFF94B373,
-            R.font.fraunces, R.font.fraunces_italic, R.font.alegreya_sans)
-        val REDBOOK = WearLook("redbook", "Red Book", false,
-            R.drawable.wl_redbook,
-            0xFF2B1E12, 0xFF9A2A1C, 0xFF6A5236, 0xD9F6EBD2, 0xFF2B1E12, 0xFF9A2A1C,
-            R.font.fell, R.font.fell_italic, R.font.fell_sc)
-        val STARLIT = WearLook("starlit", "Starlit Night", true,
-            R.drawable.wl_starlit,
-            0xFFF3EBD6, 0xFFD9BC7A, 0xFFB9B19C, 0xB31A2240, 0xFFF3EBD6, 0xFFD9BC7A,
-            R.font.cormorant, R.font.cormorant_italic, R.font.cinzel)
-        val ELVEN = WearLook("elven", "Elven Silver", true,
-            R.drawable.wl_elven,
-            0xFFE6ECEE, 0xFFC4D2D6, 0xFF8E9A9E, 0xB31B2328, 0xFFE6ECEE, 0xFFB9C6CA,
-            R.font.cormorant, R.font.cormorant_italic, R.font.cinzel)
+        val SHIRE = WearLook("shire", "Shire Morning", R.drawable.wl_shire, 0xFF0E1910,
+            0xFFF2D06B, 0xFFF1F4E6, 0xFFB9D79A, 0xFFA3B59B, 0xFF1C2B1E)
+        val REDBOOK = WearLook("redbook", "Red Book", R.drawable.wl_redbook, 0xFF1A0B09,
+            0xFFF07A62, 0xFFF6ECD6, 0xFFE6C79A, 0xFFC2A08A, 0xFF2E1814)
+        val STARLIT = WearLook("starlit", "Starlit Night", R.drawable.wl_starlit, 0xFF000000,
+            0xFFE9CC88, 0xFFF6F0E2, 0xFFA9BCE6, 0xFF8E97B0, 0xFF171B29)
+        val ELVEN = WearLook("elven", "Elven Silver", R.drawable.wl_elven, 0xFF000000,
+            0xFFC6DDE8, 0xFFF4F7F8, 0xFFA2B3BB, 0xFF7F8C93, 0xFF161B1E)
 
         val ALL = listOf(SHIRE, REDBOOK, STARLIT, ELVEN)
         fun byId(id: String) = ALL.firstOrNull { it.id == id } ?: STARLIT

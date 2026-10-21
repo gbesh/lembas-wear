@@ -466,6 +466,12 @@ def write_stills(wear_res):
 async def main():
     await render()
     make_static_fonts()
+    if len(ARGS) > 1:   # the watch app uses the same type as the face
+        import shutil
+        app_fonts = Path(ARGS[1]) / "font"
+        app_fonts.mkdir(parents=True, exist_ok=True)
+        for name in STATIC_FONTS:
+            shutil.copy(RES / "font" / f"{name}.ttf", app_fonts / f"{name}.ttf")
     write_stills(ARGS[1] if len(ARGS) > 1 else None)
     raw = RES / "raw"
     raw.mkdir(parents=True, exist_ok=True)
