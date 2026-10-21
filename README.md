@@ -51,9 +51,9 @@ The night looks are true black, which costs almost nothing on an OLED screen. Da
 
 ## The watch app and tile
 
-- **Lembas** (in the app list): the Quenya hour, the time, the Shire date and the mealtime over the current look's colours, then **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; touch and hold an app for its info page. At the bottom: **Look** (follow the sun, or one look) and **Watch face & updates**.
+- **Lembas** (in the app list): in the same type and colours as the face: the date, the Shire date, the time (hours heavy, minutes light) and the mealtime, then **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; touch and hold an app for its info page. At the bottom: **Look** (follow the sun, or one look) and **Watch face & updates**.
 - Settings → Buttons can open Lembas with a double press of the side button.
-- **The Lembas tile:** the Quenya hour, the Shire date, the mealtime, your four latest apps and an **All apps** button.
+- **The Lembas tile:** the Shire weekday and date, the mealtime, your four latest apps and an **All apps** button.
 
 ## Building
 
