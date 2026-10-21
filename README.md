@@ -25,7 +25,7 @@ The watch app keeps itself and the watch face up to date from this repo's latest
 
 Every push to `main` builds a new release. Releases are signed with the same key as every earlier Lembas watch build (kept in the repo's Actions secrets, never in the code), so each one installs over the last.
 
-*Moved from lembas-android:* the watch builds used to be published with the phone launcher. Watches installed before the move are handed over automatically: the phone repo's releases carry the latest watch build from here, and that build checks this repo from then on.
+**Installed before the move?** The watch builds used to be published in gbesh/lembas-android, and those builds still look there for updates. Run **`wear/install/Move from lembas-android (once).cmd`** on a Windows PC once: it removes the old watch app and watch face, installs the current ones from here, and from then on they update from this repo. Removing the old version takes the face and tile off the watch, so add them back afterwards (step 5 above).
 
 ## The watch face
 
@@ -62,7 +62,7 @@ Day and night come from the watch's own weather data (6am–6pm if it has none),
 2. renders the scenes and writes the watch face XML (`wear/tools/make_watchface.py`),
 3. checks the XML against Google's Watch Face Format schema and validator,
 4. builds both APKs, signed with the `LEMBAS_KEYSTORE_B64` / `LEMBAS_KEYSTORE_PASSWORD` secrets,
-5. on `main`, publishes a release tagged `v<build>` with `lembas-wear.apk`, `lembas-watchface.apk` and `Lembas-watch-installer.zip` (the five newest are kept). On other branches it runs both on a Wear OS emulator instead and pushes screenshots of each look to the `screens` branch.
+5. on `main`, publishes a release tagged `v<build>` with `lembas-wear.apk`, `lembas-watchface.apk` and `Lembas-watch-installer.zip` (the five newest are kept). Build numbers start at 2100, after the last watch build published from lembas-android (1400). On other branches it runs both on a Wear OS emulator instead and pushes screenshots of each look to the `screens` branch.
 
 **Locally:** `python wear/tools/make_watchface.py watchface/src/main/res wear/src/main/res --preview out/` renders the face (it needs Playwright, Pillow and fontTools, and the fonts in `watchface/src/main/res/font/` under the names the workflow uses) and writes `out/faces.png`, a still of each look. Then open the folder in Android Studio and run `:wear` or `:watchface`.
 
@@ -78,7 +78,7 @@ Day and night come from the watch's own weather data (6am–6pm if it has none),
 | `wear/src/.../LembasTile.kt` | The tile |
 | `wear/src/.../WearLore.kt` | Looks, Shire calendar, Quenya hours, mealtimes, sun times |
 | `wear/src/.../WearUpdater.kt` | Daily update check (while charging) and self-install |
-| `wear/install/` | The Windows installer for the first install |
+| `wear/install/` | The Windows installer for the first install, and the one-off move from lembas-android |
 
 ## Credits
 

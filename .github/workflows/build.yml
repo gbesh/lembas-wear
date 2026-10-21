@@ -127,7 +127,7 @@ jobs:
         run: |
           cp wear/build/outputs/apk/release/wear-release.apk lembas-wear.apk
           cp watchface/build/outputs/apk/release/watchface-release.apk lembas-watchface.apk
-          mkdir -p kit && cp wear/install/* kit/
+          mkdir -p kit && cp "wear/install/Install Lembas on your watch.cmd" wear/install/Install-LembasWatch.ps1 kit/
           (cd kit && zip -q ../Lembas-watch-installer.zip *)
           ls -la *.apk *.zip
 
