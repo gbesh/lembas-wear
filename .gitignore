@@ -1,0 +1,15 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+__pycache__/
+*.keystore
+# generated in CI (fonts, watch face renders and XML)
+wear/src/main/res/font/
+wear/src/main/res/drawable-nodpi/
+watchface/src/main/res/font/
+watchface/src/main/res/drawable-nodpi/
+watchface/src/main/res/raw/
+fonts/

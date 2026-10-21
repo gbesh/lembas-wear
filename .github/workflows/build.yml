@@ -1,0 +1,192 @@
+name: Build Lembas for Wear OS (watch app and watch face)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download fonts (all SIL Open Font License)
+        run: |
+          base=https://raw.githubusercontent.com/google/fonts/main/ofl
+          get() { curl -fsSL -o "$1" "$2"; }
+          mkdir -p fonts && cd fonts
+          get Cinzel.ttf                    "$base/cinzel/Cinzel%5Bwght%5D.ttf"
+          get CormorantGaramond.ttf         "$base/cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf"
+          get CormorantGaramond-Italic.ttf  "$base/cormorantgaramond/CormorantGaramond-Italic%5Bwght%5D.ttf"
+          get IMFellEnglish-Regular.ttf     "$base/imfellenglish/IMFeENrm28P.ttf"
+          get IMFellEnglish-Italic.ttf      "$base/imfellenglish/IMFeENit28P.ttf"
+          get IMFellEnglishSC-Regular.ttf   "$base/imfellenglishsc/IMFeENsc28P.ttf"
+          get Fraunces.ttf                  "$base/fraunces/Fraunces%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf"
+          get Fraunces-Italic.ttf           "$base/fraunces/Fraunces-Italic%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf"
+          get AlegreyaSans-Medium.ttf       "$base/alegreyasans/AlegreyaSans-Medium.ttf"
+          cd ..
+          # watch app and watch face: res/font with resource names
+          for d in wear/src/main/res/font watchface/src/main/res/font; do
+            mkdir -p $d
+            cp fonts/Cinzel.ttf $d/cinzel.ttf
+            cp fonts/CormorantGaramond.ttf $d/cormorant.ttf
+            cp fonts/CormorantGaramond-Italic.ttf $d/cormorant_italic.ttf
+            cp fonts/IMFellEnglish-Regular.ttf $d/fell.ttf
+            cp fonts/IMFellEnglish-Italic.ttf $d/fell_italic.ttf
+            cp fonts/IMFellEnglishSC-Regular.ttf $d/fell_sc.ttf
+            cp fonts/Fraunces.ttf $d/fraunces.ttf
+            cp fonts/Fraunces-Italic.ttf $d/fraunces_italic.ttf
+            cp fonts/AlegreyaSans-Medium.ttf $d/alegreya_sans.ttf
+          done
+
+      - name: Watch face artwork and XML
+        run: |
+          pip install -q playwright pillow xmlschema fonttools
+          python -m playwright install --with-deps chromium > /dev/null
+          python wear/tools/make_watchface.py watchface/src/main/res wear/src/main/res
+
+      - name: Check the watch face against Google's Watch Face Format specification
+        run: |
+          git clone -q --depth 1 https://github.com/google/watchface /tmp/wff
+          python - <<'EOF'
+          import sys, xmlschema
+          schema = xmlschema.XMLSchema11("/tmp/wff/third_party/wff/specification/documents/2/watchface.xsd")
+          errs = list(schema.iter_errors("watchface/src/main/res/raw/watchface.xml"))
+          for e in errs[:20]:
+              print(f"::error title=Watch face XML::{e.path}: {(e.reason or str(e))[:300]}")
+          sys.exit(1 if errs else 0)
+          EOF
+
+      - name: Google's watch face validator (expressions and data sources)
+        run: |
+          cd /tmp/wff/third_party/wff
+          ./gradlew -q :specification:validator:executable-jar > /tmp/validator-build.log 2>&1 || true
+          jar=specification/validator/build/libs/wff-validator.jar
+          if [ ! -f "$jar" ]; then echo "::warning title=WFF validator::Couldn't build Google's validator; the schema check above still ran"; tail -5 /tmp/validator-build.log; exit 0; fi
+          set +e
+          java -jar "$jar" 2 "$GITHUB_WORKSPACE/watchface/src/main/res/raw/watchface.xml" > /tmp/validator.log 2>&1
+          status=$?
+          cat /tmp/validator.log | tail -40
+          if [ $status -ne 0 ]; then grep -v "^\s*$" /tmp/validator.log | head -15 | sed 's/^/::error title=WFF validator::/'; exit 1; fi
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Signing key (from repository secrets)
+        env:
+          KEYSTORE_B64: ${{ secrets.LEMBAS_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::warning::No signing key secret; this test build uses the debug key."; exit 0
+          fi
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error title=No signing key::Add the LEMBAS_KEYSTORE_B64 secret so builds can update the installed app."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/lembas.keystore"
+
+      # Version numbers continue from the builds published before the watch moved to this repo
+      # (the last was 1400), so watches that already have Lembas accept these as updates.
+      - name: Version
+        run: echo "LEMBAS_BUILD=$(( (GITHUB_RUN_NUMBER + 20) * 100 ))" >> "$GITHUB_ENV"
+
+      - name: Build
+        shell: bash
+        env:
+          LEMBAS_KEYSTORE: ${{ runner.temp }}/lembas.keystore
+          LEMBAS_KEYSTORE_PASSWORD: ${{ secrets.LEMBAS_KEYSTORE_PASSWORD }}
+          LEMBAS_KEY_PASSWORD: ${{ secrets.LEMBAS_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          set +e
+          ./gradlew :wear:assembleRelease :watchface:assembleRelease --no-daemon 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          if [ $status -ne 0 ]; then
+            # Surface the real error as an annotation so it is easy to read.
+            grep -E "^e: " build.log | head -25 | sed 's/%/%25/g' | sed 's#file:///home/runner/work/[^/]*/[^/]*/##' | while read -r line; do echo "::error title=Kotlin::$line"; done
+            # Gradle's own explanation, one annotation per line
+            grep -A14 "What went wrong" build.log | grep -v "^\s*$" | head -20 | sed 's/%/%25/g' | while read -r line; do echo "::error title=Gradle::$line"; done
+            grep -E "AAPT|error: resource|ERROR:" build.log | head -8 | sed 's/%/%25/g' | while read -r line; do echo "::error title=Resources::$line"; done
+          fi
+          exit $status
+
+      - name: Collect the APKs and the watch installer
+        run: |
+          cp wear/build/outputs/apk/release/wear-release.apk lembas-wear.apk
+          cp watchface/build/outputs/apk/release/watchface-release.apk lembas-watchface.apk
+          mkdir -p kit && cp wear/install/* kit/
+          (cd kit && zip -q ../Lembas-watch-installer.zip *)
+          ls -la *.apk *.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lembas
+          path: |
+            lembas-wear.apk
+            lembas-watchface.apk
+            Lembas-watch-installer.zip
+            wear/src/main/res/drawable-nodpi/wl_*.png
+
+      - name: Publish a release (the watch checks these to update itself)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$LEMBAS_BUILD
+          gh release delete latest -y --cleanup-tag 2>/dev/null || true
+          gh release create "v$code" lembas-wear.apk lembas-watchface.apk Lembas-watch-installer.zip --latest --title "Lembas for Wear OS 1.$code" \
+            --notes "Built from commit ${GITHUB_SHA::7}. First install: run Lembas-watch-installer.zip on a Windows PC once. After that the watch app keeps itself and the watch face up to date."
+          # Keep the five newest releases.
+          gh release list --limit 100 --json tagName --jq '.[5:][].tagName' | while read -r t; do gh release delete "$t" -y --cleanup-tag; done
+
+  # Test branches only: run the watch face and launcher on a Wear OS emulator and capture each look
+  screens:
+    needs: build
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: lembas
+          path: out
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Wear OS emulator screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: android-wear
+          arch: x86_64
+          profile: wearos_large_round
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash wear/tools/emulator-shots.sh
+
+      - name: Publish the screenshots to the screens branch
+        run: |
+          cd shots
+          git init -q && git checkout -q -b screens
+          git -c user.name=ci -c user.email=ci@localhost add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -q -m "screens ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" screens
