@@ -54,7 +54,7 @@ The night looks are true black, which costs almost nothing on an OLED screen. **
 - **Lembas** (in the app list), in the same type and colours as the face: the date, the Shire date, the time (hours heavy, minutes light) and the mealtime, then **Favourites**, **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; a letter shows where you are in the alphabet while you do. **Touch and hold** an app to pin it to Favourites or open its info. At the bottom: the **look** (tap a swatch: follow the sun, or one look) and **Watch face & updates**.
 - Settings → Buttons can open Lembas with a double press of the side button.
 - **The Lembas tile:** the Shire weekday and date, your next alarm if one is due within 12 hours (otherwise the mealtime), your favourites (then latest apps) and an **All apps** button.
-- **Wear OS 6:** to colour the watch's own menus and tiles from the face, choose Settings → Display → Theme → **Match watch face**.
+- **Wear OS 6:** to colour the watch's own menus and tiles from the face, set the watch's theme (in its Settings) to **match the watch face**.
 
 ## Building
 
