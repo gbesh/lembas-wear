@@ -16,7 +16,11 @@ sleep 5
 adb shell settings put global auto_time 0 || true
 # Sydney's time zone, so the face works out the sun for a zone in its table
 adb shell settings put global auto_time_zone 0 || true
-adb shell cmd alarm set-timezone Australia/Sydney || adb shell setprop persist.sys.timezone Australia/Sydney || true
+adb shell cmd alarm set-timezone Australia/Sydney > "$S/timezone.txt" 2>&1 || true
+adb shell service call alarm 3 s16 Australia/Sydney >> "$S/timezone.txt" 2>&1 || true
+adb shell setprop persist.sys.timezone Australia/Sydney >> "$S/timezone.txt" 2>&1 || true
+sleep 2
+adb shell getprop persist.sys.timezone >> "$S/timezone.txt" 2>&1
 # Off the charger, or Wear OS covers the face with its charging screen
 adb emu power ac off > /dev/null 2>&1 || true
 adb emu power status discharging > /dev/null 2>&1 || true
@@ -27,11 +31,12 @@ adb shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es ope
 sleep 20
 adb shell input keyevent KEYCODE_WAKEUP; sleep 3
 snap face-now
-for t in 0921:shire 1530:redbook 2005:starlit 0130:elven; do
+for t in 0603:dawn 0921:shire 1530:redbook 2005:starlit 0130:elven; do
   hm=${t%%:*}; n=${t##*:}
   adb shell "date $(date +%m%d)${hm}$(date +%Y).00" || true
   adb shell input keyevent KEYCODE_WAKEUP; sleep 8
   snap "face-$n"
+  adb shell date >> "$S/timezone.txt" 2>&1
 done
 # three frames 0.3 s apart on the last look: the glint should have moved a little between each
 for k in a b c; do adb emu screenrecord screenshot "$S/motion-$k.png" > /dev/null 2>&1; sleep 0.3; done
