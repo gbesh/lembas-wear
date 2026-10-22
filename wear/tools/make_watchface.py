@@ -284,7 +284,7 @@ STYLE = {
     "elven": dict(back="elven-back", hours="#FFC6DDE8", text="#FFF4F7F8", lore="#FFA2B3BB", meal="#FF7F8C93",
                   ticks="#73F4F7F8", plate="#1FFFFFFF"),
 }
-AMBIENT = dict(hours="#FFB4B4B4", text="#FFD2D2D2", lore="#FF8A8A8A", ticks="#FF6A6A6A")
+AMBIENT = dict(hours="#FF9C9C9C", text="#FFB8B8B8", lore="#FF8A8A8A", ticks="#FF6A6A6A")
 COMP_TEXT = "#FFF4F4F4"
 
 
@@ -394,9 +394,9 @@ def words(st, ambient=False):
     tap = (lambda t: None) if ambient else (lambda t: t)
     out = text(DATE_BOX, "alegreya_sans", 24, st["text"], "%s %s", ["[DAY_OF_WEEK_S]", "[DAY]"], spacing=0.02, launch=tap("CALENDAR"))
     out += text(LORE_BOX, "lore_italic", 21, st["lore"], "%s · %s %s", [WD, SHIRE_DAY, shire_name()], slant="ITALIC", launch=tap(APP))
-    if ambient:   # outlines only: far fewer lit pixels, and kinder to the screen over hours
-        out += text(HOURS_BOX, "numerals_light", NUM_SIZE, "#00000000", "%s", [HOUR_Z], outline=st["hours"])
-        out += text(MINS_BOX, "numerals_light", NUM_SIZE, "#00000000", "%s", ["[MINUTE_Z]"], outline=st["text"])
+    if ambient:   # thin numerals in grey: few lit pixels, and they drift (see ambient_group)
+        out += text(HOURS_BOX, "numerals_light", NUM_SIZE, st["hours"], "%s", [HOUR_Z])
+        out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"])
     else:
         out += text(HOURS_BOX, "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z], launch="ALARM")
         out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"], launch="ALARM")
