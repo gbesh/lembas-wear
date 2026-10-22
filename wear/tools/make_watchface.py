@@ -34,7 +34,7 @@ C = S / 2
 PARTS = {
     "shire-back": (450, 450), "redbook-back": (450, 450), "starlit-back": (450, 450), "elven-back": (450, 450),
     "ticks": (450, 450), "ticks-major": (450, 450),
-    "sun": (40, 40), "moonhalo": (40, 40), **{f"moon{i}": (18, 18) for i in range(8)},
+    "sun": (40, 40), "moonhalo": (40, 40), **{f"moon{i}": (26, 26) for i in range(8)},
 }
 
 # Fixed-weight cuts of the variable fonts (renderers don't all honour weight on variable fonts),
@@ -269,6 +269,7 @@ MEAL_BOX = (80, 348, 290, 30)
 RING_R = 209                       # where the sun and moon travel
 COMP_D = 80
 COMPS = [(0, 38, 185, "WATCH_BATTERY", "Left"), (1, 332, 185, "STEP_COUNT", "Right")]
+BOTTOM = (2, 150, 378, 150, 32)    # slot, x, y, w, h: a wide one along the bottom
 NUM_SIZE = 150
 
 # Each look: hours (accent), minutes and date (text), Shire date, mealtime, the ring's ticks, and
@@ -317,17 +318,22 @@ def dot(x, y, r, color, transforms=""):
             f'<Ellipse x="{pad:.2f}" y="{pad:.2f}" width="{r * 2:.2f}" height="{r * 2:.2f}"><Fill color="{color}"/></Ellipse></PartDraw>')
 
 
-def font(family, size, color, template, params, slant="NORMAL", spacing=None):
+def font(family, size, color, template, params, slant="NORMAL", spacing=None, outline=None):
     sp = f' letterSpacing="{spacing}"' if spacing is not None else ""
     ps = "".join(f'<Parameter expression="{a(p)}"/>' for p in params)
+    deco = f'<Outline color="{outline}" width="2"/>' if outline else ""
     return (f'<Font family="{family}" size="{size}" color="{color}" slant="{slant}" weight="NORMAL"{sp}>'
-            f'<Template>{a(template)}{ps}</Template></Font>')
+            f'{deco}<Template>{a(template)}{ps}</Template></Font>')
 
 
-def text(box, family, size, color, template, params, slant="NORMAL", spacing=None):
+APP = "com.middleearth.launcher/com.middleearth.lembas.wear.MainActivity"   # the Lembas watch app
+
+
+def text(box, family, size, color, template, params, slant="NORMAL", spacing=None, launch=None, outline=None):
     x, y, w, h = box
-    return (f'<PartText x="{x}" y="{y}" width="{w}" height="{h}"><Text align="CENTER" ellipsis="TRUE">'
-            f'{font(family, size, color, template, params, slant, spacing)}</Text></PartText>')
+    tap = f'<Launch target="{launch}"/>' if launch else ""
+    return (f'<PartText x="{x}" y="{y}" width="{w}" height="{h}">{tap}<Text align="CENTER" ellipsis="TRUE">'
+            f'{font(family, size, color, template, params, slant, spacing, outline)}</Text></PartText>')
 
 
 def group(name, body, extra=""):
@@ -353,10 +359,10 @@ def ring_xy(w):
 
 
 def moon(southern):
-    mx, my = ring_xy(18)
+    mx, my = ring_xy(26)
     idx = "(floor(([MOON_PHASE_POSITION] + 1.75) / 3.5) % 8)"
     flip = ' scaleX="-1"' if southern else ""
-    moon_img = lambda i: image(f"moon{i}", 0, 0, 18, 18, glide("x", mx) + glide("y", my), extra=flip)
+    moon_img = lambda i: image(f"moon{i}", 0, 0, 26, 26, glide("x", mx) + glide("y", my), extra=flip)
     cases = "".join(f'<Compare expression="m{i}">{moon_img(i)}</Compare>' for i in range(1, 8))
     exprs = "".join(f'<Expression name="m{i}"><![CDATA[{idx} == {i}]]></Expression>' for i in range(1, 8))
     return f'<Condition><Expressions>{exprs}</Expressions>{cases}<Default>{moon_img(0)}</Default></Condition>'
@@ -384,12 +390,17 @@ def twinkles(look):
 
 
 def words(st, ambient=False):
-    out = text(DATE_BOX, "alegreya_sans", 24, st["text"], "%s %s", ["[DAY_OF_WEEK_S]", "[DAY]"], spacing=0.02)
-    out += text(LORE_BOX, "lore_italic", 21, st["lore"], "%s · %s %s", [WD, SHIRE_DAY, shire_name()], slant="ITALIC")
-    out += text(HOURS_BOX, "numerals_light" if ambient else "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z])
-    out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"])
-    if not ambient:
-        out += text(MEAL_BOX, "lore_italic", 20, st["meal"], "%s", [MEAL], slant="ITALIC")
+    """Tap the date for the calendar, the time for alarms, the Shire date or mealtime for Lembas."""
+    tap = (lambda t: None) if ambient else (lambda t: t)
+    out = text(DATE_BOX, "alegreya_sans", 24, st["text"], "%s %s", ["[DAY_OF_WEEK_S]", "[DAY]"], spacing=0.02, launch=tap("CALENDAR"))
+    out += text(LORE_BOX, "lore_italic", 21, st["lore"], "%s · %s %s", [WD, SHIRE_DAY, shire_name()], slant="ITALIC", launch=tap(APP))
+    if ambient:   # outlines only: far fewer lit pixels, and kinder to the screen over hours
+        out += text(HOURS_BOX, "numerals_light", NUM_SIZE, "#00000000", "%s", [HOUR_Z], outline=st["hours"])
+        out += text(MINS_BOX, "numerals_light", NUM_SIZE, "#00000000", "%s", ["[MINUTE_Z]"], outline=st["text"])
+    else:
+        out += text(HOURS_BOX, "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z], launch="ALARM")
+        out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"], launch="ALARM")
+        out += text(MEAL_BOX, "lore_italic", 20, st["meal"], "%s", [MEAL], slant="ITALIC", launch=APP)
     return out
 
 
@@ -421,7 +432,11 @@ def sun_ring():
 
 def ambient_group():
     """The always-on display: the hours and minutes in light grey numerals, the four main ticks and the date."""
-    out = tinted("ticks-major", AMBIENT["ticks"]) + words(AMBIENT, ambient=True)
+    out = tinted("ticks-major", AMBIENT["ticks"])
+    # the words drift by a few pixels each minute, so no pixel stays lit for hours
+    shift = (f'<Transform target="x" value="{a("3 * sin(rad([MINUTE] * 47))")}"/>'
+             f'<Transform target="y" value="{a("3 * cos(rad([MINUTE] * 61))")}"/>')
+    out += f'<Group name="ambient-words" x="0" y="0" width="{S}" height="{S}">{shift}{words(AMBIENT, ambient=True)}</Group>'
     return f'<Group name="ambient" x="0" y="0" width="{S}" height="{S}" alpha="0"><Variant mode="AMBIENT" target="alpha" value="255"/>{out}</Group>'
 
 
@@ -440,6 +455,22 @@ def complication(slot, x, y, provider, label):
             f'<DefaultProviderPolicy defaultSystemProvider="{provider}" defaultSystemProviderType="SHORT_TEXT"/>'
             f'<BoundingOval x="0" y="0" width="{d}" height="{d}"/>'
             f'<Complication type="SHORT_TEXT">{short}</Complication><Complication type="RANGED_VALUE">{ranged}</Complication>'
+            f'<Complication type="EMPTY"/></ComplicationSlot>')
+
+
+def bottom_complication():
+    slot, x, y, w, h = BOTTOM
+    pill = (f'<PartDraw x="0" y="0" width="{w}" height="{h}"><RoundRectangle x="0" y="0" width="{w}" height="{h}" cornerRadiusX="{h / 2:g}" cornerRadiusY="{h / 2:g}">'
+            f'<Fill color="#26FFFFFF"/></RoundRectangle></PartDraw>')
+    icon = (f'<PartImage x="10" y="7" width="18" height="18" tintColor="{COMP_TEXT}">'
+            f'<Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/></PartImage>')
+    words = lambda tmpl: text((32, 0, w - 40, h), "alegreya_sans", 19, COMP_TEXT, "%s", [tmpl])
+    return (f'<ComplicationSlot slotId="{slot}" name="slot{slot}" displayName="Bottom" x="{x}" y="{y}" width="{w}" height="{h}" '
+            f'supportedTypes="SHORT_TEXT LONG_TEXT EMPTY" isCustomizable="TRUE">'
+            f'<DefaultProviderPolicy defaultSystemProvider="NEXT_EVENT" defaultSystemProviderType="SHORT_TEXT"/>'
+            f'<BoundingBox x="0" y="0" width="{w}" height="{h}"/>'
+            f'<Complication type="SHORT_TEXT">{icon}{words("[COMPLICATION.TEXT]")}</Complication>'
+            f'<Complication type="LONG_TEXT">{icon}{words("[COMPLICATION.TEXT]")}</Complication>'
             f'<Complication type="EMPTY"/></ComplicationSlot>')
 
 
@@ -466,6 +497,7 @@ def watchface_xml():
             + sun_ring()
             + ambient_group()
             + "".join(complication(*c) for c in COMPS)
+            + bottom_complication()
             + '</Scene></WatchFace>\n')
 
 

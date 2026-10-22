@@ -31,8 +31,24 @@ import java.time.LocalDateTime
  */
 class LembasTile : TileService() {
 
+    /** Your favourites first, then your latest apps, four in all. */
     private fun recentComponents(): List<ComponentName> =
-        Apps.recentKeys(this).mapNotNull { ComponentName.unflattenFromString(it) }.take(4)
+        (Apps.favouriteKeys(this) + Apps.recentKeys(this)).distinct().mapNotNull { ComponentName.unflattenFromString(it) }.take(4)
+
+    /** "Alarm 6:30" when an alarm is due in the next 12 hours, otherwise the mealtime. */
+    private fun subtitle(now: LocalDateTime): String {
+        try {
+            val next = getSystemService(android.app.AlarmManager::class.java)?.nextAlarmClock
+            if (next != null) {
+                val t = java.time.Instant.ofEpochMilli(next.triggerTime).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
+                if (java.time.Duration.between(now, t).toHours() < 12) {
+                    val h24 = android.text.format.DateFormat.is24HourFormat(this)
+                    return "Alarm " + t.format(java.time.format.DateTimeFormatter.ofPattern(if (h24) "H:mm" else "h:mm a"))
+                }
+            }
+        } catch (_: Throwable) { }
+        return Lore.meal(now.hour)
+    }
 
     private fun resourcesVersion(): String = recentComponents().joinToString("|") { it.flattenToShortString() }.hashCode().toString()
 
@@ -100,7 +116,7 @@ class LembasTile : TileService() {
             .addContent(text(Lore.shireWeekday(now.dayOfWeek).uppercase(), 12f, look.accent))
             .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(2f)).build())
             .addContent(text(Lore.shireDate(now.toLocalDate()), 17f, look.lore, italic = true))
-            .addContent(text(Lore.meal(now.hour), 13f, look.soft, italic = true))
+            .addContent(text(subtitle(now), 13f, look.soft, italic = true))
             .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(10f)).build())
 
         val recents = recentComponents()
