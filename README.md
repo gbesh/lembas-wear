@@ -8,16 +8,15 @@ The phone launcher lives in **[gbesh/lembas-android](https://github.com/gbesh/le
 
 ## Install (once)
 
-You need a Windows PC on the same Wi-Fi as the watch.
+**From your phone (easiest, no computer).** With the Lembas phone launcher ([gbesh/lembas-android](https://github.com/gbesh/lembas-android)) on an Android 11+ phone on the same Wi-Fi as the watch:
 
-1. Download **`Lembas-watch-installer.zip`** from the [latest release](https://github.com/gbesh/lembas-wear/releases/latest), unzip it and double-click **Install Lembas on your watch**.
-2. On the watch, turn on Developer options: Settings → System → About → Versions, tap **Build number** 7 times.
-3. In Settings → Developer options, turn on **ADB debugging** and **Wireless debugging**.
-4. Follow the installer: on the watch, open Wireless debugging → **Pair new device** and type the address and code it shows, then the address from the main Wireless debugging screen. The installer puts the watch face and the app on the watch.
-5. **Add the face:** touch and hold the watch face, swipe to the end, tap **+** and choose **Lembas**.
-   **Add the tile:** swipe left from the face and add the **Lembas** tile.
+1. On the watch, turn on Developer options: Settings → System → About → Versions, tap **Build number** 7 times.
+2. In Settings → Developer options, turn on **ADB debugging** and **Wireless debugging**, then open Wireless debugging → **Pair new device**.
+3. On the phone, long-press the home screen → **Put Lembas on your watch**, and type the six-digit code the watch shows. The phone finds the watch, pairs, and installs the watch app and the watch face.
 
-You can turn Wireless debugging off again afterwards.
+**From a Windows PC.** Download **`Lembas-watch-installer.zip`** from the [latest release](https://github.com/gbesh/lembas-wear/releases/latest), unzip it, double-click **Install Lembas on your watch**, and follow it (steps 1 and 2 above, then the addresses and code the watch shows).
+
+Then **add the face:** touch and hold the watch face, swipe to the end, tap **+** and choose **Lembas**; and **add the tile:** swipe left from the face and add the **Lembas** tile. You can turn Wireless debugging off again afterwards.
 
 ## Updates
 
@@ -25,7 +24,7 @@ The watch app keeps itself and the watch face up to date from this repo's latest
 
 Every push to `main` builds a new release. Releases are signed with the same key as every earlier Lembas watch build (kept in the repo's Actions secrets, never in the code), so each one installs over the last.
 
-**Installed before the move?** The watch builds used to be published in gbesh/lembas-android, and those builds still look there for updates. Run **`wear/install/Move from lembas-android (once).cmd`** on a Windows PC once: it removes the old watch app and watch face, installs the current ones from here, and from then on they update from this repo. Removing the old version takes the face and tile off the watch, so add them back afterwards (step 5 above).
+**Installed before the move?** The watch builds used to be published in gbesh/lembas-android, and those builds still look there for updates. Run **`wear/install/Move from lembas-android (once).cmd`** on a Windows PC once: it removes the old watch app and watch face, installs the current ones from here, and from then on they update from this repo. Removing the old version takes the face and tile off the watch, so add them back afterwards. (Installing from the phone does the same job.)
 
 ## The watch face
 
@@ -34,7 +33,8 @@ A clean, modern face in the four Lembas palettes:
 - **Large stacked numerals** (Fraunces): the hours heavy in the look's colour, the minutes light.
 - **The sun ring**, a 24-hour ring around the rim with noon at the top and midnight at the bottom. By day the sun travels across its bright half, from sunrise on the left to sunset on the right; at night it's the moon, in tonight's real phase.
 - **Wed 21** and the **Shire date** (e.g. *Hevensday · 30 Winterfilth*) above the time, and the **hobbit mealtime** below it (*Second breakfast*, *Afternoon tea*, … *The Shire sleeps*).
-- **Two complications**, one either side of the time (battery and steps by default; touch and hold the face → Customise to change them).
+- **Two complications**, one either side of the time (battery and steps by default), and a **wide one along the bottom** (your next event by default). Touch and hold the face → Customise to change them.
+- **Tap** the time for alarms, the date for your calendar, and the Shire date or the mealtime for the Lembas app.
 
 | Look | When (Follow the sun) | Colours |
 |---|---|---|
@@ -43,17 +43,18 @@ A clean, modern face in the four Lembas palettes:
 | **Starlit Night** | sunset → 11pm, 4am → sunrise | **Black** with a little blue at the zenith and a few twinkling stars; gold hours |
 | **Elven Silver** | 11pm → 4am | **Black** with a breath of silver; silver-blue hours |
 
-The night looks are true black, which costs almost nothing on an OLED screen. Day and night come from the watch's own weather data (6am–6pm if it has none), and the morning/afternoon switch is at solar midday. Touch and hold → Customise picks one look to keep instead, and has a **Southern hemisphere moon** switch.
+The night looks are true black, which costs almost nothing on an OLED screen. **The same clock everywhere:** the face works out sunrise, solar noon and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute, and the sun ring's bright part is today's real daylight. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) Touch and hold → Customise picks one look to keep instead, and has a **Southern hemisphere moon** switch.
 
-**Always-on display:** the time in light grey numerals, the date and Shire date, and the four main ticks.
+**Always-on display:** the time in thin grey numerals, the date and Shire date, and the four main ticks. The words drift a few pixels each minute so no pixel stays lit for hours.
 
 **Light on the battery:** very little moves (the sun's glow, the sun or moon along the ring, a few stars at night). The animation values change at most once a second and the watch glides between them at 8–12 frames per second. Everything stops in ambient mode.
 
 ## The watch app and tile
 
-- **Lembas** (in the app list): in the same type and colours as the face: the date, the Shire date, the time (hours heavy, minutes light) and the mealtime, then **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; touch and hold an app for its info page. At the bottom: **Look** (follow the sun, or one look) and **Watch face & updates**.
+- **Lembas** (in the app list), in the same type and colours as the face: the date, the Shire date, the time (hours heavy, minutes light) and the mealtime, then **Favourites**, **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; a letter shows where you are in the alphabet while you do. **Touch and hold** an app to pin it to Favourites or open its info. At the bottom: the **look** (tap a swatch: follow the sun, or one look) and **Watch face & updates**.
 - Settings → Buttons can open Lembas with a double press of the side button.
-- **The Lembas tile:** the Shire weekday and date, the mealtime, your four latest apps and an **All apps** button.
+- **The Lembas tile:** the Shire weekday and date, your next alarm if one is due within 12 hours (otherwise the mealtime), your favourites (then latest apps) and an **All apps** button.
+- **Wear OS 6:** to colour the watch's own menus and tiles from the face, choose Settings → Display → Theme → **Match watch face**.
 
 ## Building
 
