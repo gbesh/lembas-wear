@@ -33,7 +33,7 @@ C = S / 2
 # part -> (width, height) of the rendered PNG
 PARTS = {
     "shire-back": (450, 450), "redbook-back": (450, 450), "starlit-back": (450, 450), "elven-back": (450, 450),
-    "ticks": (450, 450), "ticks-major": (450, 450), "arc-day": (450, 450), "arc-night": (450, 450),
+    "ticks": (450, 450), "ticks-major": (450, 450),
     "sun": (40, 40), "moonhalo": (40, 40), **{f"moon{i}": (18, 18) for i in range(8)},
 }
 
@@ -166,14 +166,95 @@ SHIRE_DAY = chain([(f"{E} == 0", "1"), (f"{E} == 1", "2"), (f"{K} < 180", f"({K}
                   f"({K2} % 30 + 1)")
 HOUR = "([IS_24_HOUR_MODE] ? [HOUR_0_23] : [HOUR_1_12])"
 
-# Which look: day (from the watch's weather, or 6am-6pm without it) before or after midday, and night
-IS_DAY = "([WEATHER.IS_AVAILABLE] ? ([WEATHER.IS_DAY] ? 1 : 0) : (([HOUR_0_23] >= 6 && [HOUR_0_23] < 18) ? 1 : 0))"
+# ------------------------------------------------------------------ the sun, exactly as the phone and the watch app work it out
+# The main city of each time zone (the same table as lembas-android's Sun.kt and the watch app's
+# WearLore.kt), with the zone's standard UTC offset and its daylight-saving shift, in minutes.
+CITIES = [
+    ("Australia/Sydney", -33.87, 151.21, 600, 60),
+    ("Australia/Melbourne", -37.81, 144.96, 600, 60),
+    ("Australia/Brisbane", -27.47, 153.03, 600, 0),
+    ("Australia/Adelaide", -34.93, 138.60, 570, 60),
+    ("Australia/Perth", -31.95, 115.86, 480, 0),
+    ("Australia/Hobart", -42.88, 147.33, 600, 60),
+    ("Australia/Darwin", -12.46, 130.84, 570, 0),
+    ("Australia/Canberra", -35.28, 149.13, 600, 60),
+    ("Australia/Lord_Howe", -31.55, 159.08, 630, 30),
+    ("Australia/Broken_Hill", -31.95, 141.45, 570, 60),
+    ("Pacific/Auckland", -36.85, 174.76, 720, 60),
+    ("Pacific/Fiji", -18.14, 178.44, 720, 0),
+    ("Asia/Tokyo", 35.68, 139.69, 540, 0),
+    ("Asia/Seoul", 37.57, 126.98, 540, 0),
+    ("Asia/Shanghai", 31.23, 121.47, 480, 0),
+    ("Asia/Hong_Kong", 22.32, 114.17, 480, 0),
+    ("Asia/Singapore", 1.35, 103.82, 480, 0),
+    ("Asia/Kolkata", 19.08, 72.88, 330, 0),
+    ("Asia/Dubai", 25.20, 55.27, 240, 0),
+    ("Asia/Jakarta", -6.21, 106.85, 420, 0),
+    ("Asia/Manila", 14.60, 120.98, 480, 0),
+    ("Asia/Bangkok", 13.76, 100.50, 420, 0),
+    ("Europe/London", 51.51, -0.13, 0, 60),
+    ("Europe/Dublin", 53.35, -6.26, 0, 60),
+    ("Europe/Paris", 48.86, 2.35, 60, 60),
+    ("Europe/Berlin", 52.52, 13.40, 60, 60),
+    ("Europe/Madrid", 40.42, -3.70, 60, 60),
+    ("Europe/Rome", 41.90, 12.50, 60, 60),
+    ("Europe/Amsterdam", 52.37, 4.90, 60, 60),
+    ("Europe/Stockholm", 59.33, 18.07, 60, 60),
+    ("Europe/Athens", 37.98, 23.73, 120, 60),
+    ("Europe/Moscow", 55.76, 37.62, 180, 0),
+    ("Africa/Johannesburg", -26.20, 28.05, 120, 0),
+    ("Africa/Cairo", 30.04, 31.24, 120, 60),
+    ("Africa/Lagos", 6.52, 3.38, 60, 0),
+    ("Africa/Nairobi", -1.29, 36.82, 180, 0),
+    ("America/New_York", 40.71, -74.01, -300, 60),
+    ("America/Chicago", 41.88, -87.63, -360, 60),
+    ("America/Denver", 39.74, -104.99, -420, 60),
+    ("America/Los_Angeles", 34.05, -118.24, -480, 60),
+    ("America/Phoenix", 33.45, -112.07, -420, 0),
+    ("America/Toronto", 43.65, -79.38, -300, 60),
+    ("America/Vancouver", 49.28, -123.12, -480, 60),
+    ("America/Mexico_City", 19.43, -99.13, -360, 0),
+    ("America/Sao_Paulo", -23.55, -46.63, -180, 0),
+    ("America/Argentina/Buenos_Aires", -34.60, -58.38, -180, 0),
+    ("America/Santiago", -33.45, -70.67, -240, 60),
+    ("America/Bogota", 4.71, -74.07, -300, 0),
+    ("America/Lima", -12.05, -77.04, -300, 0),
+    ("Pacific/Honolulu", 21.31, -157.86, -600, 0),
+    ("America/Anchorage", 61.22, -149.90, -540, 60),
+]
+
+
+def by_zone(values, default):
+    return chain([(f'[TIMEZONE_ID] == {q(z)}', v) for z, v in values], default)
+
+
+LAT = by_zone([(z, f"{la}") for z, la, lo, std, dst in CITIES], "999")
+LON = by_zone([(z, f"{lo}") for z, la, lo, std, dst in CITIES], "0")
+OFF = by_zone([(z, f"([IS_DAYLIGHT_SAVING_TIME] ? {std + dst} : {std})" if dst else f"{std}") for z, la, lo, std, dst in CITIES], "0")
+KNOWN = f"({LAT} < 900)"                      # a time zone in the table
+G = "(0.0172142 * ([DAY_OF_YEAR] - 1))"         # 2pi/365 per day
+EOT = f"(229.18 * (0.000075 + 0.001868 * cos({G}) - 0.032077 * sin({G}) - 0.014615 * cos(2 * {G}) - 0.040849 * sin(2 * {G})))"
+DEC = (f"(0.006918 - 0.399912 * cos({G}) + 0.070257 * sin({G}) - 0.006758 * cos(2 * {G}) + 0.000907 * sin(2 * {G})"
+       f" - 0.002697 * cos(3 * {G}) + 0.00148 * sin(3 * {G}))")
+SUN_NOON = f"(720 - 4 * {LON} - {EOT} + {OFF})"
+COS_HA = f"(cos(rad(90.833)) / (cos(rad({LAT})) * cos({DEC})) - tan(rad({LAT})) * tan({DEC}))"
+HA = f"deg(acos(clamp({COS_HA}, -1, 1)))"
+RISE = f"clamp(floor({SUN_NOON} - 4 * {HA}), 0, 1439)"
+NOON = f"clamp(floor({SUN_NOON}), 0, 1439)"
+SET = f"clamp(floor({SUN_NOON} + 4 * {HA}), 0, 1439)"
 MINS = "([HOUR_0_23] * 60 + [MINUTE])"
-NOON = "(720 + ([IS_DAYLIGHT_SAVING_TIME] ? 60 : 0))"
+
+# Day and night: from the sun for the zone's main city; for a zone not in the table, from the
+# watch's weather (or 6am-6pm without it), with midday at 12:00 (1pm in daylight saving).
+WEATHER_DAY = "([WEATHER.IS_AVAILABLE] ? ([WEATHER.IS_DAY] ? 1 : 0) : (([HOUR_0_23] >= 6 && [HOUR_0_23] < 18) ? 1 : 0))"
+WEATHER_NOON = "(720 + ([IS_DAYLIGHT_SAVING_TIME] ? 60 : 0))"
+IS_DAY = f"({KNOWN} ? (({MINS} >= {RISE} && {MINS} < {SET}) ? 1 : 0) : {WEATHER_DAY})"
+# The phone's schedule, in the same order: sunrise to solar noon Shire, solar noon to sunset Red
+# Book, 11pm to 4am Elven, otherwise Starlit.
 LOOK_EXPR = {
-    "shire": f"{IS_DAY} == 1 && {MINS} < {NOON}",
-    "redbook": f"{IS_DAY} == 1 && {MINS} >= {NOON}",
-    "elven": f"{IS_DAY} == 0 && ([HOUR_0_23] >= 23 || [HOUR_0_23] < 4)",
+    "shire": f"({KNOWN} ? ({MINS} >= {RISE} && {MINS} < {NOON}) : ({WEATHER_DAY} == 1 && {MINS} < {WEATHER_NOON}))",
+    "redbook": f"({KNOWN} ? ({MINS} >= {NOON} && {MINS} < {SET}) : ({WEATHER_DAY} == 1 && {MINS} >= {WEATHER_NOON}))",
+    "elven": f"({MINS} >= 1380 || {MINS} < 240)",
 }
 
 
@@ -190,17 +271,17 @@ COMP_D = 80
 COMPS = [(0, 38, 185, "WATCH_BATTERY", "Left"), (1, 332, 185, "STEP_COUNT", "Right")]
 NUM_SIZE = 150
 
-# Each look: hours (accent), minutes and date (text), Shire date, mealtime, the daylight half of
-# the ring, the night half, the ticks, and the complication background.
+# Each look: hours (accent), minutes and date (text), Shire date, mealtime, the ring's ticks, and
+# the complication background. (The ring's daylight and the sun or moon are drawn once over all looks.)
 STYLE = {
     "shire": dict(back="shire-back", hours="#FFF2D06B", text="#FFF1F4E6", lore="#FFB9D79A", meal="#FFA3B59B",
-                  day="#CCF2D06B", night="#4DB9D79A", ticks="#99F1F4E6", plate="#2EB9D79A"),
+                  ticks="#99F1F4E6", plate="#2EB9D79A"),
     "redbook": dict(back="redbook-back", hours="#FFF07A62", text="#FFF6ECD6", lore="#FFE6C79A", meal="#FFC2A08A",
-                    day="#CCF07A62", night="#4DF6ECD6", ticks="#99F6ECD6", plate="#2EF07A62"),
+                    ticks="#99F6ECD6", plate="#2EF07A62"),
     "starlit": dict(back="starlit-back", hours="#FFE9CC88", text="#FFF6F0E2", lore="#FFA9BCE6", meal="#FF8E97B0",
-                    day="#99E9CC88", night="#66A9BCE6", ticks="#80F6F0E2", plate="#24FFFFFF"),
+                    ticks="#80F6F0E2", plate="#24FFFFFF"),
     "elven": dict(back="elven-back", hours="#FFC6DDE8", text="#FFF4F7F8", lore="#FFA2B3BB", meal="#FF7F8C93",
-                  day="#80C6DDE8", night="#59C6DDE8", ticks="#73F4F7F8", plate="#1FFFFFFF"),
+                  ticks="#73F4F7F8", plate="#1FFFFFFF"),
 }
 AMBIENT = dict(hours="#FFB4B4B4", text="#FFD2D2D2", lore="#FF8A8A8A", ticks="#FF6A6A6A")
 COMP_TEXT = "#FFF4F4F4"
@@ -315,10 +396,27 @@ def words(st, ambient=False):
 def look_group(look):
     st = STYLE[look]
     scene = image(st["back"], 0, 0, S, S) + twinkles(look)
-    scene += tinted("arc-night", st["night"]) + tinted("arc-day", st["day"]) + tinted("ticks", st["ticks"])
+    scene += tinted("ticks", st["ticks"])
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
-    scene += sky_marker()
     return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st)))
+
+
+RING_RISE = f"({KNOWN} ? {RISE} : 360)"
+RING_SET = f"({KNOWN} ? {SET} : 1080)"
+
+
+def ring_arc(start, end, color, width):
+    d = RING_R * 2
+    return (f'<PartDraw x="0" y="0" width="{S}" height="{S}"><Arc centerX="{C:g}" centerY="{C:g}" width="{d}" height="{d}" startAngle="0" endAngle="180">'
+            f'{tr("startAngle", start)}{tr("endAngle", end)}<Stroke color="{color}" thickness="{width}" cap="ROUND"/></Arc></PartDraw>')
+
+
+def sun_ring():
+    """Drawn once over every look: the day's real daylight (sunrise to sunset) as the bright part of
+    the ring, the night as the faint part, and the sun or the moon at the time of day."""
+    day = ring_arc(f"{RING_RISE} * 0.25 + 180", f"{RING_SET} * 0.25 + 180", "#C8FFF1D2", 2.6)
+    night = ring_arc(f"{RING_SET} * 0.25 + 180", f"{RING_RISE} * 0.25 + 540", "#38FFFFFF", 1.4)
+    return f'<Group name="sun-ring" x="0" y="0" width="{S}" height="{S}">{AMBIENT_OFF}{night}{day}{sky_marker()}</Group>'
 
 
 def ambient_group():
@@ -365,6 +463,7 @@ def watchface_xml():
             '</UserConfigurations>'
             '<Scene backgroundColor="#FF000000">'
             f'<ListConfiguration id="look">{options}</ListConfiguration>'
+            + sun_ring()
             + ambient_group()
             + "".join(complication(*c) for c in COMPS)
             + '</Scene></WatchFace>\n')
@@ -399,7 +498,15 @@ def still(look, with_words=True):
     st = STYLE.get(look)
     if st:
         img.alpha_composite(load(st["back"]))
-        tint("arc-night", st["night"]); tint("arc-day", st["day"]); tint("ticks", st["ticks"])
+        rise, sset = 350, 1160      # a sample day: Sydney, late October
+        ring = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+        rd = ImageDraw.Draw(ring)
+        box = (C - RING_R, C - RING_R, C + RING_R, C + RING_R)
+        clock = lambda m: m * 0.25 + 180 - 90      # PIL measures from 3 o'clock
+        rd.arc(box, clock(sset), clock(rise) + 360, fill=(255, 255, 255, 56), width=1)
+        rd.arc(box, clock(rise), clock(sset), fill=(255, 241, 210, 200), width=3)
+        img.alpha_composite(ring)
+        tint("ticks", st["ticks"])
     else:
         st = AMBIENT
         tint("ticks-major", AMBIENT["ticks"])
@@ -412,7 +519,7 @@ def still(look, with_words=True):
             ImageDraw.Draw(layer).ellipse((x, y, x + COMP_D, y + COMP_D), fill=hexc(st["plate"]))
         img.alpha_composite(layer)
         ang = math.radians(mins * 0.25 + 180)
-        day = 360 <= mins < 1080
+        day = 350 <= mins < 1160
         n = "sun" if day else "moon3"
         w = 40 if day else 18
         if not day:

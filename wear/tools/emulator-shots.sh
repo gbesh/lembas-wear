@@ -14,6 +14,9 @@ adb install -r out/lembas-wear.apk 2>&1 | tee -a "$S/install.txt"
 adb root || true
 sleep 5
 adb shell settings put global auto_time 0 || true
+# Sydney's time zone, so the face works out the sun for a zone in its table
+adb shell settings put global auto_time_zone 0 || true
+adb shell cmd alarm set-timezone Australia/Sydney || adb shell setprop persist.sys.timezone Australia/Sydney || true
 # Off the charger, or Wear OS covers the face with its charging screen
 adb emu power ac off > /dev/null 2>&1 || true
 adb emu power status discharging > /dev/null 2>&1 || true
