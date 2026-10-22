@@ -1,0 +1,7 @@
+Result: Parcel(	00000000    '....')
+Australia/Sydney
+Thu Oct 22 06:03:08 AEDT 2026
+Thu Oct 22 09:21:08 AEDT 2026
+Thu Oct 22 15:30:08 AEDT 2026
+Thu Oct 22 20:05:08 AEDT 2026
+Thu Oct 22 01:30:08 AEDT 2026
