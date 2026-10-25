@@ -38,12 +38,12 @@ A clean, modern face in the four Lembas palettes:
 
 | Look | When (Follow the sun) | Colours |
 |---|---|---|
-| **Shire Morning** | sunrise → midday | Deep green, lit with morning gold from above; golden hours |
-| **Red Book** | midday → sunset | Oxblood, lit like a page by the fire; vermilion hours |
+| **Shire Morning** | sunrise → late afternoon | Deep green, lit with morning gold from above; golden hours |
+| **Red Book** | late afternoon → sunset | Oxblood, lit like a page by the fire; vermilion hours |
 | **Starlit Night** | sunset → 11pm, 4am → sunrise | **Black** with a little blue at the zenith and a few twinkling stars; gold hours |
 | **Elven Silver** | 11pm → 4am | **Black** with a breath of silver; silver-blue hours |
 
-The night looks are true black, which costs almost nothing on an OLED screen. **The same clock everywhere:** the face works out sunrise, solar noon and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute, and the sun ring's bright part is today's real daylight. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) Touch and hold → Customise picks one look to keep instead, and has a **Southern hemisphere moon** switch.
+The night looks are true black, which costs almost nothing on an OLED screen. **The same clock everywhere:** the face works out sunrise, late afternoon (the sun down to 15°) and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute, and the sun ring's bright part is today's real daylight. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) Touch and hold → Customise picks one look to keep instead, and has a **Southern hemisphere moon** switch.
 
 **Always-on display:** the time in thin grey numerals, the date and Shire date, and the four main ticks. The words drift a few pixels each minute so no pixel stays lit for hours.
 

@@ -31,7 +31,7 @@ adb shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es ope
 sleep 20
 adb shell input keyevent KEYCODE_WAKEUP; sleep 3
 snap face-now
-for t in 0603:dawn 0921:shire 1530:redbook 2005:starlit 0130:elven; do
+for t in 0603:dawn 0921:shire 1530:afternoon 1815:redbook 2005:starlit 0130:elven; do
   hm=${t%%:*}; n=${t##*:}
   adb shell "date $(date +%m%d)${hm}$(date +%Y).00" || true
   adb shell input keyevent KEYCODE_WAKEUP; sleep 8
