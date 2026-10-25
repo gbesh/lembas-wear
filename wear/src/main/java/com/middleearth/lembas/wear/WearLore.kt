@@ -55,15 +55,15 @@ object WearLooks {
     fun setChoice(ctx: Context, id: String) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(PREF_LOOK, id).apply()
 
-    /** Same schedule as the phone: sunrise→midday Shire, midday→sunset Red Book, 11pm→4am Elven, otherwise Starlit. */
+    /** Same schedule as the phone: sunrise→late afternoon Shire, late afternoon→sunset Red Book, 11pm→4am Elven, otherwise Starlit. */
     fun current(ctx: Context, now: LocalDateTime = LocalDateTime.now()): WearLook {
         val c = choice(ctx)
         if (c != WearLook.AUTO) return WearLook.byId(c)
         val day = Sun.today(ZoneId.systemDefault(), now.toLocalDate())
         val m = now.hour * 60 + now.minute
         return when {
-            m >= day.sunrise && m < day.noon -> WearLook.SHIRE
-            m >= day.noon && m < day.sunset -> WearLook.REDBOOK
+            m >= day.sunrise && m < day.evening -> WearLook.SHIRE
+            m >= day.evening && m < day.sunset -> WearLook.REDBOOK
             m >= 23 * 60 || m < 4 * 60 -> WearLook.ELVEN
             else -> WearLook.STARLIT
         }
@@ -126,7 +126,8 @@ object Lore {
 
 /** Sunrise, solar noon and sunset from the time zone's main city (no location needed). */
 object Sun {
-    class Day(val sunrise: Int, val noon: Int, val sunset: Int)
+    /** Minutes after midnight; [evening] is when the afternoon sun is down to 15° (the fireside look). */
+    class Day(val sunrise: Int, val noon: Int, val evening: Int, val sunset: Int)
 
     // The same table as the phone (lembas-android Sun.kt) and the watch face, so all three switch together.
     private val CITIES: Map<String, Pair<Double, Double>> = mapOf(
@@ -173,6 +174,13 @@ object Sun {
             cosHa <= -1 -> 180.0
             else -> Math.toDegrees(acos(cosHa))
         }
-        return Day((noon - 4 * ha).toInt().coerceIn(0, 1439), noon.toInt().coerceIn(0, 1439), (noon + 4 * ha).toInt().coerceIn(0, 1439))
+        val cosHe = (sin(Math.toRadians(15.0)) - sin(latR) * sin(dec)) / (cos(latR) * cos(dec))
+        val he = when {
+            cosHe >= 1 -> 0.0
+            cosHe <= -1 -> 180.0
+            else -> Math.toDegrees(acos(cosHe))
+        }.coerceAtMost(ha)
+        return Day((noon - 4 * ha).toInt().coerceIn(0, 1439), noon.toInt().coerceIn(0, 1439),
+            (noon + 4 * he).toInt().coerceIn(0, 1439), (noon + 4 * ha).toInt().coerceIn(0, 1439))
     }
 }

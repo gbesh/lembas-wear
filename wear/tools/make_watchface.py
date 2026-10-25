@@ -242,18 +242,23 @@ HA = f"deg(acos(clamp({COS_HA}, -1, 1)))"
 RISE = f"clamp(floor({SUN_NOON} - 4 * {HA}), 0, 1439)"
 NOON = f"clamp(floor({SUN_NOON}), 0, 1439)"
 SET = f"clamp(floor({SUN_NOON} + 4 * {HA}), 0, 1439)"
+# Late afternoon: the sun down to 15 degrees (the fireside Red Book look takes over). Always before
+# sunset; 0 hour angle (noon) if the sun never climbs that high.
+COS_HE = f"((sin(rad(15)) - sin(rad({LAT})) * sin({DEC})) / (cos(rad({LAT})) * cos({DEC})))"
+HE = f"deg(acos(clamp({COS_HE}, -1, 1)))"
+EVENING = f"clamp(floor({SUN_NOON} + 4 * {HE}), 0, 1439)"
 MINS = "([HOUR_0_23] * 60 + [MINUTE])"
 
 # Day and night: from the sun for the zone's main city; for a zone not in the table, from the
 # watch's weather (or 6am-6pm without it), with midday at 12:00 (1pm in daylight saving).
 WEATHER_DAY = "([WEATHER.IS_AVAILABLE] ? ([WEATHER.IS_DAY] ? 1 : 0) : (([HOUR_0_23] >= 6 && [HOUR_0_23] < 18) ? 1 : 0))"
-WEATHER_NOON = "(720 + ([IS_DAYLIGHT_SAVING_TIME] ? 60 : 0))"
+WEATHER_EVENING = "1020"   # 5pm
 IS_DAY = f"({KNOWN} ? (({MINS} >= {RISE} && {MINS} < {SET}) ? 1 : 0) : {WEATHER_DAY})"
-# The phone's schedule, in the same order: sunrise to solar noon Shire, solar noon to sunset Red
-# Book, 11pm to 4am Elven, otherwise Starlit.
+# The phone's schedule, in the same order: sunrise to late afternoon Shire, late afternoon to
+# sunset Red Book, 11pm to 4am Elven, otherwise Starlit.
 LOOK_EXPR = {
-    "shire": f"({KNOWN} ? ({MINS} >= {RISE} && {MINS} < {NOON}) : ({WEATHER_DAY} == 1 && {MINS} < {WEATHER_NOON}))",
-    "redbook": f"({KNOWN} ? ({MINS} >= {NOON} && {MINS} < {SET}) : ({WEATHER_DAY} == 1 && {MINS} >= {WEATHER_NOON}))",
+    "shire": f"({KNOWN} ? ({MINS} >= {RISE} && {MINS} < {EVENING}) : ({WEATHER_DAY} == 1 && {MINS} < {WEATHER_EVENING}))",
+    "redbook": f"({KNOWN} ? ({MINS} >= {EVENING} && {MINS} < {SET}) : ({WEATHER_DAY} == 1 && {MINS} >= {WEATHER_EVENING}))",
     "elven": f"({MINS} >= 1380 || {MINS} < 240)",
 }
 
