@@ -4,104 +4,155 @@
 <meta charset="utf-8">
 <title>Lembas watch art</title>
 <style>
-/* Backgrounds and sprites for the round 450px Lembas watch face. Each ?part= renders one layer
-   (transparent where nothing is drawn). Backgrounds are deep tonal colour or black: the four
-   Lembas palettes as light, not as illustration, and kind to an OLED screen. */
+/* The Lembas watch face's pictures: flat, colourful little scenes in the four looks, one per
+   season, drawn for a round 450px face, and the pieces that move on them (rendered separately so
+   the watch can animate them). ?part= picks one; ?outline=1 draws a scene as thin grey lines for
+   the always-on display. Everything is transparent where nothing is drawn. */
 html,body{margin:0;background:transparent;overflow:hidden}
 svg{display:block}
+.outline *{fill:none!important;stroke:#8C8C8C!important;stroke-width:1.6px!important;opacity:1!important}
+.outline .no{display:none}
 </style>
 </head>
 <body>
 <script>
 'use strict';
 var q = new URLSearchParams(location.search);
-var PART = q.get('part') || 'starlit-back';
+var PART = q.get('part') || 'shire-summer';
 var W = +(q.get('w') || 450), H = +(q.get('h') || 450);
-function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+var OUTLINE = q.get('outline') === '1';
+function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function f(n) { return Math.round(n * 10) / 10; }
+function wave(base, amp, fr, p) { var d = 'M-5,460'; for (var x = -5; x <= 455; x += 6) d += ' L' + x + ',' + f(base + Math.sin(x * fr + p) * amp + Math.sin(x * fr * 2.3 + p * 1.7) * amp * .35); return d + ' L455,460Z'; }
+function peaks(base, pts) { var d = 'M-5,460 L-5,' + base; pts.forEach(function (p) { d += ' L' + p[0] + ',' + p[1]; }); return d + ' L455,' + base + ' L455,460Z'; }
 var P = {};
 
-function glow(id, cx, cy, r, color, op) {
-  return '<radialGradient id="' + id + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '" gradientUnits="userSpaceOnUse">' +
-    '<stop offset="0" stop-color="' + color + '" stop-opacity="' + op + '"/><stop offset="1" stop-color="' + color + '" stop-opacity="0"/></radialGradient>';
-}
-function stars(seed, n, maxOp) {
-  var r = rng(seed), s = '';
-  for (var i = 0, k = 0; k < n && i < 5000; i++) {
-    var x = r() * 450, y = r() * 450, dx = x - 225, dy = y - 225;
-    if (dx * dx + dy * dy > 185 * 185 || (Math.abs(dx) < 120 && y > 60 && y < 380)) continue;   // keep clear of the time
-    k++;
-    s += '<circle cx="' + f(x) + '" cy="' + f(y) + '" r="' + f(.5 + Math.pow(r(), 3) * .9) + '" fill="#F4F1E8" opacity="' + f(.12 + r() * maxOp) + '"/>';
+// ------------------------------------------------------------------ Shire Morning
+var SHIRE = {
+  spring: { sky: '#EEF0C8', sun: '#FFD86A', h1: '#C3D99A', h2: '#93BE6C', h3: '#67A04E', h4: '#507F3E', door: '#2F6B42', dots: ['#F3A6B8', '#FFFFFF', '#F7D36A'] },
+  summer: { sky: '#F3E6BC', sun: '#FFCF5A', h1: '#B7D08F', h2: '#86B263', h3: '#5E9147', h4: '#4C7C3B', door: '#2F6B42', dots: ['#C8573A', '#C8573A', '#F7D36A'] },
+  autumn: { sky: '#F4DDB4', sun: '#FFB45A', h1: '#D9B76E', h2: '#C08C45', h3: '#8E7A3A', h4: '#6E5A2E', door: '#2F6B42', dots: ['#C8573A', '#E0883A', '#B5452A'] },
+  winter: { sky: '#E3E9EE', sun: '#FFE7A6', h1: '#F6F8FA', h2: '#E4EBF0', h3: '#CFD9E0', h4: '#B7C4CC', door: '#2F6B42', dots: ['#FFFFFF', '#FFFFFF', '#C8573A'] },
+};
+function shire(season) {
+  var c = SHIRE[season], s = '';
+  s += '<rect class="no" width="450" height="450" fill="' + c.sky + '"/>';
+  s += '<circle class="no" cx="96" cy="300" r="120" fill="' + c.sun + '" opacity=".22"/><circle cx="96" cy="300" r="74" fill="' + c.sun + '"/>';
+  s += '<path d="' + wave(300, 10, 0.018, 1) + '" fill="' + c.h1 + '"/>';
+  s += '<path d="' + wave(330, 12, 0.022, 3) + '" fill="' + c.h2 + '"/>';
+  s += '<path d="M140,460 C170,360 260,330 340,334 C400,338 440,360 460,380 L460,460Z" fill="' + c.h3 + '"/>';
+  // the round green door, with its brass knob, and a round window
+  s += '<circle cx="300" cy="392" r="30" fill="#E7C27A"/><circle cx="300" cy="392" r="24" fill="' + c.door + '"/><circle class="no" cx="300" cy="392" r="3.5" fill="#FFCF5A"/>';
+  s += '<circle cx="246" cy="384" r="11" fill="#E7C27A"/><circle class="no" cx="246" cy="384" r="7.5" fill="#FFF3C9"/>';
+  // the chimney the smoke rises from
+  s += '<rect x="352" y="318" width="12" height="24" rx="2" fill="#8A6A48"/>';
+  s += '<path d="M-10,460 C40,400 120,388 200,410 L200,460Z" fill="' + c.h4 + '"/>';
+  var r = rng(4), d = c.dots;
+  for (var i = 0; i < (season === 'summer' ? 3 : 16); i++) {
+    var x = season === 'summer' ? [70, 96, 356][i] : 20 + r() * 420, y = season === 'summer' ? [420, 430, 430][i] : 350 + r() * 90;
+    s += '<circle class="no" cx="' + f(x) + '" cy="' + f(y) + '" r="' + f(2.5 + r() * 1.5) + '" fill="' + d[i % 3] + '"/>';
   }
+  if (season === 'winter') s += '<path class="no" d="M290,362 q10,-6 20,0 q6,4 12,0" stroke="#FFFFFF" stroke-width="5" fill="none" stroke-linecap="round"/>';
   return s;
-}
-// a low, soft line of hills across the bottom: the only scenery, as a silhouette
-function hills(fill, op) {
-  return '<path d="M0,392 C80,370 150,366 225,378 C300,390 370,372 450,360 V450 H0 Z" fill="' + fill + '" opacity="' + op + '"/>';
 }
 
-// ------------------------------------------------------------------ backgrounds
-P['shire-back'] = function () {   // deep green, morning light from above
-  return '<defs>' + glow('a', 225, 30, 320, '#E8C766', .22) + glow('b', 225, 470, 260, '#7EA35C', .28) + '</defs>' +
-    '<rect width="450" height="450" fill="#09120B"/><rect width="450" height="450" fill="url(#b)"/><rect width="450" height="450" fill="url(#a)"/>';
-};
-P['redbook-back'] = function () {  // oxblood, lit like a page by the fire
-  return '<defs>' + glow('a', 225, 40, 330, '#B4402E', .30) + glow('b', 225, 460, 260, '#E8C690', .10) + '</defs>' +
-    '<rect width="450" height="450" fill="#0F0605"/><rect width="450" height="450" fill="url(#a)"/><rect width="450" height="450" fill="url(#b)"/>';
-};
-P['starlit-back'] = function () {  // black, a little blue at the zenith
-  return '<defs>' + glow('a', 225, 0, 300, '#22346B', .55) + '</defs>' +
-    '<rect width="450" height="450" fill="#000"/><rect width="450" height="450" fill="url(#a)"/>' + stars(1954, 46, .45);
-};
-P['elven-back'] = function () {    // black, a breath of silver
-  return '<defs>' + glow('a', 225, 225, 240, '#9FB8C4', .10) + '</defs>' +
-    '<rect width="450" height="450" fill="#000"/><rect width="450" height="450" fill="url(#a)"/>' + stars(1955, 30, .35);
-};
+// ------------------------------------------------------------------ Red Book (by the fire; the flames are separate, they move)
+function redbook() {
+  var s = '<rect class="no" width="450" height="450" fill="#6A1D16"/>';
+  s += '<circle cx="225" cy="470" r="230" fill="#8A2A1A"/><circle class="no" cx="225" cy="470" r="170" fill="#B23A1E"/>';
+  return s;
+}
+P['logs'] = function () { return '<path d="M150,440 l150,-40 M150,400 l150,40" stroke="#3A120C" stroke-width="12" stroke-linecap="round"/>'; };
+P['flame-outer'] = function () { return '<path d="M60,4 C120,74 135,114 105,174 C90,204 30,204 15,174 C-15,114 5,74 60,4Z" transform="translate(0,0)" fill="#E8612A"/>'; };   // 120x200
+P['flame-mid'] = function () { return '<path d="M42,2 C76,42 82,70 64,110 C54,130 24,130 16,110 C2,74 14,40 42,2Z" fill="#F7A23B"/>'; };  // 84x124
+P['flame-inner'] = function () { return '<path d="M20,2 C38,24 40,40 30,60 C24,70 12,70 8,60 C2,42 8,28 20,2Z" fill="#FFE07A"/>'; };     // 40x70
 
-// ------------------------------------------------------------------ the 24-hour sun ring
-// Noon at the top, midnight at the bottom, sunrise on the left and sunset on the right.
-// Drawn white; the face tints it for each look.
-P['ticks'] = function () {
-  var s = '';
-  for (var h = 0; h < 24; h++) {
-    var a = (h / 24 * 360 + 180) * Math.PI / 180, major = h % 6 === 0;
-    var r1 = major ? 188 : 195, r2 = 202;
-    s += '<path d="M' + f(225 + r1 * Math.sin(a)) + ',' + f(225 - r1 * Math.cos(a)) + ' L' + f(225 + r2 * Math.sin(a)) + ',' + f(225 - r2 * Math.cos(a)) +
-      '" stroke="#FFF" stroke-width="' + (major ? 3 : 1.6) + '" stroke-linecap="round" opacity="' + (major ? 1 : .6) + '"/>';
-  }
+// ------------------------------------------------------------------ Starlit Night (the moon is separate: tonight's real phase)
+function starlit(season) {
+  var s = '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0D1233"/><stop offset="1" stop-color="#3B2F6E"/></linearGradient></defs>';
+  s += '<rect class="no" width="450" height="450" fill="url(#g)"/>';
+  var r = rng(9);
+  for (var i = 0; i < 60; i++) s += '<circle class="no" cx="' + f(r() * 450) + '" cy="' + f(r() * 250) + '" r="' + f(.6 + r() * 1.2) + '" fill="#F4EAD0" opacity="' + f(.3 + r() * .6) + '"/>';
+  var far = [[40, 280], [90, 300], [150, 250], [210, 296], [260, 270], [330, 230], [390, 280], [440, 262]];
+  s += '<path d="' + peaks(330, far) + '" fill="#4B3F8A"/>';
+  if (season === 'winter') far.forEach(function (p, k) {   // snow on the far peaks
+    if (k % 2 === 0 && p[1] < 290) s += '<path class="no" d="M' + (p[0] - 14) + ',' + (p[1] + 18) + ' L' + p[0] + ',' + p[1] + ' L' + (p[0] + 14) + ',' + (p[1] + 18) + ' L' + (p[0] + 5) + ',' + (p[1] + 13) + ' L' + p[0] + ',' + (p[1] + 19) + ' L' + (p[0] - 6) + ',' + (p[1] + 13) + 'Z" fill="#E9E6F6"/>';
+  });
+  s += '<path d="' + peaks(360, [[30, 330], [110, 300], [170, 334], [240, 296], [300, 330], [380, 306], [455, 340]]) + '" fill="#2B2560"/>';
+  s += '<path d="' + peaks(396, [[60, 380], [140, 356], [220, 384], [300, 362], [380, 388], [455, 370]]) + '" fill="' + (season === 'winter' ? '#2A2A55' : '#15123A') + '"/>';
+  // a little cabin with a lit window by the lake shore
+  s += '<path d="M318,392 L340,374 L362,392 L362,410 L318,410Z" fill="#0E0C28"/><rect class="no" x="334" y="394" width="10" height="8" fill="#FFC867"/>';
   return s;
-};
-P['arc-day'] = function () {     // the daylight half of the ring (6am to 6pm, over the top)
-  return '<path d="M16,225 A209,209 0 0 1 434,225" fill="none" stroke="#FFF" stroke-width="2.6" stroke-linecap="round"/>';
-};
-P['arc-night'] = function () {
-  return '<path d="M16,225 A209,209 0 0 0 434,225" fill="none" stroke="#FFF" stroke-width="1.4" stroke-linecap="round"/>';
-};
-P['ticks-major'] = function () {   // the always-on display shows only 6, 12, 18 and midnight
-  var s = '';
-  for (var h = 0; h < 24; h += 6) {
-    var a = (h / 24 * 360 + 180) * Math.PI / 180;
-    s += '<path d="M' + f(225 + 190 * Math.sin(a)) + ',' + f(225 - 190 * Math.cos(a)) + ' L' + f(225 + 202 * Math.sin(a)) + ',' + f(225 - 202 * Math.cos(a)) + '" stroke="#FFF" stroke-width="2" stroke-linecap="round"/>';
-  }
-  return s;
-};
-P['sun'] = function () {  // 40px: the sun on the ring
-  return '<defs><radialGradient id="g"><stop offset="0" stop-color="#FFF4C8" stop-opacity=".9"/><stop offset=".4" stop-color="#FFD978" stop-opacity=".45"/><stop offset="1" stop-color="#FFD978" stop-opacity="0"/></radialGradient></defs>' +
-    '<circle cx="20" cy="20" r="20" fill="url(#g)"/><circle cx="20" cy="20" r="7.5" fill="#FFF3C4"/>';
-};
-P['moonhalo'] = function () {
-  return '<defs><radialGradient id="g"><stop offset="0" stop-color="#DCE4F5" stop-opacity=".35"/><stop offset="1" stop-color="#DCE4F5" stop-opacity="0"/></radialGradient></defs><circle cx="20" cy="20" r="20" fill="url(#g)"/>';
-};
-function moon(phase) {  // 26px, northern-hemisphere view (lit on the right while waxing)
-  var cx = 13, cy = 13, rr = 12;
+}
+function moon(phase, big) {   // northern view, lit on the right while waxing
+  var cx = big / 2, cy = big / 2, rr = big / 2 - 2;
   var tw = rr * Math.cos(2 * Math.PI * phase), aw = Math.max(Math.abs(tw), .4);
-  var d = 'M' + cx + ',' + (cy - rr) + ' A' + rr + ',' + rr + ' 0 0 1 ' + cx + ',' + (cy + rr) +
-    ' A' + f(aw) + ',' + rr + ' 0 0 ' + (tw >= 0 ? 0 : 1) + ' ' + cx + ',' + (cy - rr) + ' Z';
-  return '<circle cx="13" cy="13" r="12" fill="#1A1F2C" stroke="#3A4256" stroke-width=".8"/><path d="' + d + '" fill="#F2EEE2"' + (phase > .5 ? ' transform="translate(26,0) scale(-1,1)"' : '') + '/>';
+  var d = 'M' + cx + ',' + (cy - rr) + ' A' + rr + ',' + rr + ' 0 0 1 ' + cx + ',' + (cy + rr) + ' A' + f(aw) + ',' + rr + ' 0 0 ' + (tw >= 0 ? 0 : 1) + ' ' + cx + ',' + (cy - rr) + ' Z';
+  return '<circle cx="' + cx + '" cy="' + cy + '" r="' + rr + '" fill="#2A2C5E"/><path d="' + d + '" fill="#F6D27A"' + (phase > .5 ? ' transform="translate(' + big + ',0) scale(-1,1)"' : '') + '/>';
 }
-for (var m = 0; m < 8; m++) (function (m) { P['moon' + m] = function () { return moon(m / 8 + .0001); }; })(m);
+for (var m = 0; m < 8; m++) (function (m) { P['moon' + m] = function () { return moon(m / 8 + .0001, 64); }; })(m);
+P['moonglow'] = function () { return '<defs><radialGradient id="h"><stop offset="0" stop-color="#F6D27A" stop-opacity=".35"/><stop offset="1" stop-color="#F6D27A" stop-opacity="0"/></radialGradient></defs><circle cx="70" cy="70" r="70" fill="url(#h)"/>'; };  // 140
+P['shooting'] = function () { return '<defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF" stop-opacity="0"/><stop offset="1" stop-color="#FFF" stop-opacity=".95"/></linearGradient></defs><path d="M2,2 L96,30" stroke="url(#s)" stroke-width="2.4" stroke-linecap="round"/>'; };  // 100x34
 
-document.body.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + (P[PART] ? P[PART]() : '') + '</svg>';
+// ------------------------------------------------------------------ Elven Silver
+var ELVEN = {
+  spring: ['#9CCFB4', '#D7EBC8', '#F2D6E0', '#BFE3D0'],
+  summer: ['#5FA9AD', '#8FC4C6', '#B9DADB', '#D8E9D0'],
+  autumn: ['#D9A441', '#E9C77A', '#C7783A', '#F1DDA0'],
+  winter: ['#C9D8DC', '#E6F0F2', '#A9BEC4', '#FFFFFF'],
+};
+function elven(season) {
+  var s = '<defs><linearGradient id="e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#04080A"/><stop offset="1" stop-color="#0B2A31"/></linearGradient></defs>';
+  s += '<rect class="no" width="450" height="450" fill="url(#e)"/>';
+  var r = rng(12);
+  for (var i = 0; i < 40; i++) s += '<circle class="no" cx="' + f(r() * 450) + '" cy="' + f(r() * 200) + '" r="' + f(.5 + r()) + '" fill="#E6F4F6" opacity="' + f(.3 + r() * .5) + '"/>';
+  var knoll = season === 'winter' ? ['#3E6A72', '#6F9DA3', '#B9D3D6'] : ['#0F4A52', '#1B7076', '#3FA0A2'];
+  s += '<ellipse cx="225" cy="470" rx="320" ry="140" fill="' + knoll[0] + '"/><ellipse cx="225" cy="480" rx="240" ry="96" fill="' + knoll[1] + '"/><ellipse class="no" cx="225" cy="492" rx="150" ry="62" fill="' + knoll[2] + '"/>';
+  // two slender silver trees at the edges, trunks curving in, soft round crowns of leaves
+  var rl = rng(77), col = ELVEN[season];
+  [-1, 1].forEach(function (side) {
+    var bx = 225 + side * 178, tx = 225 + side * 128;
+    s += '<path d="M' + (bx - side * 10) + ',470 C' + (bx - side * 4) + ',360 ' + (tx + side * 22) + ',250 ' + tx + ',150 C' + (tx + side * 10) + ',250 ' + (bx + side * 12) + ',360 ' + (bx + side * 14) + ',470Z" fill="#C9D8DC"/>';
+    s += '<path d="M' + (tx + side * 8) + ',230 q' + side * 26 + ',-10 ' + side * 40 + ',-42" stroke="#C9D8DC" stroke-width="5" fill="none" stroke-linecap="round"/>';
+    var leaves = season === 'winter' ? 8 : 14;
+    for (var k = 0; k < 14; k++) { var a = rl() * Math.PI * 2, d = Math.sqrt(rl()) * 46, rr = 14 + rl() * 10; if (k < leaves) s += '<circle class="' + (k % 3 ? 'no' : '') + '" cx="' + f(tx + side * 14 + Math.cos(a) * d * 1.25) + '" cy="' + f(128 + Math.sin(a) * d * .8) + '" r="' + f(rr) + '" fill="' + col[k % 4] + '" opacity=".85"/>'; }
+    for (k = 0; k < 5; k++) { a = rl() * Math.PI * 2; d = Math.sqrt(rl()) * 30; rr = 9 + rl() * 6; if (season !== 'winter' || k < 2) s += '<circle class="no" cx="' + f(tx + side * 40 + Math.cos(a) * d) + '" cy="' + f(190 + Math.sin(a) * d * .7) + '" r="' + f(rr) + '" fill="' + col[k % 2 ? 3 : 1] + '" opacity=".8"/>'; }
+  });
+  return s;
+}
+P['elven-star'] = function () {  // 80px: Eärendil's star, pulsing
+  return '<defs><radialGradient id="h"><stop offset="0" stop-color="#BFE3EC" stop-opacity=".4"/><stop offset="1" stop-color="#BFE3EC" stop-opacity="0"/></radialGradient></defs><circle cx="40" cy="40" r="40" fill="url(#h)"/>' +
+    '<path d="M40,16 l5,19 19,5 -19,5 -5,19 -5,-19 -19,-5 19,-5z" fill="#F2FAFC"/>';
+};
+P['sunglow'] = function () { return '<defs><radialGradient id="h"><stop offset=".5" stop-color="#FFE7A0" stop-opacity=".5"/><stop offset="1" stop-color="#FFE7A0" stop-opacity="0"/></radialGradient></defs><circle cx="110" cy="110" r="110" fill="url(#h)"/>'; };  // 220
+P['puff'] = function () { return '<circle cx="12" cy="12" r="11" fill="#FFFFFF"/>'; };   // 24
+P['cloud'] = function () { return '<g fill="#FFFFFF"><rect x="10" y="30" width="130" height="26" rx="13"/><circle cx="52" cy="32" r="22"/><circle cx="88" cy="24" r="26"/><circle cx="118" cy="38" r="16"/></g>'; };  // 150x60
+P['fog'] = function () { return '<defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E6EEF0" stop-opacity="0"/><stop offset=".5" stop-color="#E6EEF0" stop-opacity=".42"/><stop offset="1" stop-color="#E6EEF0" stop-opacity="0"/></linearGradient></defs><rect width="600" height="120" fill="url(#f)"/>'; };  // 600x120
+// rain and snow, as short loops of frames (the watch plays them like a little film)
+function rainFrame(k, n) {
+  var r = rng(31), s = '';
+  for (var i = 0; i < 46; i++) { var x = r() * 470, y0 = r() * 450, y = (y0 + k / n * 450) % 450, len = 14 + r() * 10; s += '<path d="M' + f(x) + ',' + f(y) + ' l-4,' + f(len) + '" stroke="#DCE6EE" stroke-opacity=".6" stroke-width="2" stroke-linecap="round"/>'; }
+  return s;
+}
+function snowFrame(k, n) {
+  var r = rng(41), s = '';
+  for (var i = 0; i < 40; i++) { var x = r() * 450, y0 = r() * 450, sp = .5 + r() * .5, y = (y0 + k / n * 450 * sp * 2) % 450, ph = r() * 6; s += '<circle cx="' + f(x + 6 * Math.sin(ph + k / n * 6.283)) + '" cy="' + f(y) + '" r="' + f(1.8 + r() * 2) + '" fill="#FFFFFF" opacity=".9"/>'; }
+  return s;
+}
+for (var k = 0; k < 8; k++) (function (k) { P['rain' + k] = function () { return rainFrame(k, 8); }; P['snow' + k] = function () { return snowFrame(k, 8); }; })(k);
+
+['spring', 'summer', 'autumn', 'winter'].forEach(function (season) {
+  P['shire-' + season] = function () { return shire(season); };
+  P['starlit-' + season] = function () { return starlit(season); };
+  P['elven-' + season] = function () { return elven(season); };
+});
+P['redbook'] = redbook;
+P['redbook-outline-fire'] = function () { return '<path d="M225,250 C285,320 300,360 270,420 C255,450 195,450 180,420 C150,360 170,320 225,250Z"/>'; };
+
+var body = P[PART] ? P[PART]() : '';
+if (OUTLINE && PART === 'redbook') body += P['redbook-outline-fire']() + P['logs']();
+document.body.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"' + (OUTLINE ? ' class="outline"' : '') + '>' +
+  (W === 450 && H === 450 ? '<defs><clipPath id="round"><circle cx="225" cy="225" r="225"/></clipPath></defs><g clip-path="url(#round)">' + body + '</g>' : body) + '</svg>';
 </script>
 </body>
 </html>

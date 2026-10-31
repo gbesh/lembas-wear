@@ -220,8 +220,8 @@ fun LembasApp() {
             ScreenScaffold(scrollState = state) { padding ->
                 Box(Modifier.fillMaxSize().background(Color.Black)) {
                     Image(painterResource(look.background), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    // Darker further down, so the list stays calm and readable
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x00000000), Color(0x80000000), Color(0xCC000000)))))
+                    // the scene softly veiled, darker further down, so the list stays calm and readable
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x59000000), Color(0xA6000000), Color(0xE0000000)))))
                     TransformingLazyColumn(state = state, contentPadding = padding, modifier = Modifier.fillMaxSize()) {
                         item { Header(look, now, type) }
                         if (favourites.isNotEmpty()) {

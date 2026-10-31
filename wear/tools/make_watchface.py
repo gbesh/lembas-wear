@@ -5,11 +5,13 @@ fonts, then writes watchface/src/main/res/raw/watchface.xml. Everything that mov
 declaratively, so the watch's own renderer animates it (and stops in ambient mode); there is no
 code on the watch.
 
-The design: deep tonal (or black) backgrounds in the four Lembas palettes; large stacked numerals,
-the hours heavy in the look's colour and the minutes light; a complication either side; and a
-24-hour sun ring around the rim, where the sun (or tonight's moon) travels from sunrise on the
-left, over noon at the top, to sunset on the right. The Shire date and the hobbit mealtime sit
-above and below the time as quiet lines of type.
+The design: four flat, colourful little scenes that follow the sun (the Shire's round door, the
+fire by the Red Book, mountains and a cabin under the stars, Rivendell's silver trees), each in
+four seasons, with large stacked numerals over them (the hours heavy, the minutes light), the
+date and the Shire date above, the hobbit mealtime below and a complication either side. Small
+things move: the sun's glow and chimney smoke, the fire and its embers, twinkling stars, tonight's
+real moon and the odd shooting star, Earendil's star and drifting motes; and, from the watch's own
+weather, cloud, fog, rain or snow. The always-on display shows the scene as fine grey lines.
 
 Usage: python make_watchface.py [watchface_res_dir] [wear_app_res_dir] [--preview out_dir]
 """
@@ -30,11 +32,22 @@ RES = Path(ARGS[0]) if ARGS else ROOT / "watchface" / "src" / "main" / "res"
 S = 450  # the face's virtual canvas
 C = S / 2
 
-# part -> (width, height) of the rendered PNG
+# part -> (width, height) of the rendered PNG; "x-outline" is scene x drawn as lines (always-on display)
+SEASONS = ["spring", "summer", "autumn", "winter"]
+BACKS = {   # look -> the picture for each season (the fire is the same all year; the lake only changes in winter)
+    "shire": {se: f"shire-{se}" for se in SEASONS},
+    "redbook": {se: "redbook" for se in SEASONS},
+    "starlit": {se: "starlit-winter" if se == "winter" else "starlit-summer" for se in SEASONS},
+    "elven": {se: f"elven-{se}" for se in SEASONS},
+}
+ALL_BACKS = {b for look in BACKS.values() for b in look.values()}
 PARTS = {
-    "shire-back": (450, 450), "redbook-back": (450, 450), "starlit-back": (450, 450), "elven-back": (450, 450),
-    "ticks": (450, 450), "ticks-major": (450, 450),
-    "sun": (40, 40), "moonhalo": (40, 40), **{f"moon{i}": (26, 26) for i in range(8)},
+    **{b: (450, 450) for look in BACKS.values() for b in look.values()},
+    **{f"{k}-outline": (450, 450) for k in BACKS},
+    "logs": (450, 450), "flame-outer": (120, 206), "flame-mid": (84, 130), "flame-inner": (40, 72),
+    **{f"moon{i}": (64, 64) for i in range(8)}, "moonglow": (140, 140), "shooting": (100, 34),
+    "elven-star": (80, 80), "sunglow": (220, 220), "puff": (24, 24), "cloud": (150, 60), "fog": (600, 120),
+    **{f"rain{i}": (450, 450) for i in range(8)}, **{f"snow{i}": (450, 450) for i in range(8)},
 }
 
 # Fixed-weight cuts of the variable fonts (renderers don't all honour weight on variable fonts),
@@ -59,11 +72,21 @@ async def render():
         pg = await b.new_page(viewport={"width": 450, "height": 450})
         for part, (w, h) in PARTS.items():
             await pg.set_viewport_size({"width": w, "height": h})
-            await pg.goto(f"{ART.as_uri()}?part={part}&w={w}&h={h}")
+            src, outline = (BACKS[part[:-8]]["summer"], 1) if part.endswith("-outline") else (part, 0)
+            await pg.goto(f"{ART.as_uri()}?part={src}&w={w}&h={h}&outline={outline}")
             await pg.wait_for_timeout(100)
-            await pg.screenshot(path=str(out / f"{res_name(part)}.png"), omit_background=True,
-                                clip={"x": 0, "y": 0, "width": w, "height": h})
+            png = out / f"{res_name(part)}.png"
+            await pg.screenshot(path=str(png), omit_background=True, clip={"x": 0, "y": 0, "width": w, "height": h})
+            if part in ALL_BACKS:   # opaque pictures; the sprites keep their soft edges
+                quantize(png)
         await b.close()
+
+
+def quantize(png):
+    """Flat art needs few colours: a 256-colour palette keeps the face small and quick to load."""
+    from PIL import Image
+    im = Image.open(png).convert("RGB")
+    im.quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(png, optimize=True)
 
 
 def make_static_fonts():
@@ -266,31 +289,42 @@ LOOK_EXPR = {
 HOUR_Z = "([IS_24_HOUR_MODE] ? [HOUR_0_23_Z] : [HOUR_1_12_Z])"
 
 # ------------------------------------------------------------------ layout
-DATE_BOX = (100, 58, 250, 32)      # Wed 21
-LORE_BOX = (60, 88, 330, 30)       # Hevensday · 30 Winterfilth
-HOURS_BOX = (90, 112, 270, 124)
-MINS_BOX = (90, 224, 270, 124)
-MEAL_BOX = (80, 348, 290, 30)
-RING_R = 209                       # where the sun and moon travel
-COMP_D = 80
-COMPS = [(0, 38, 185, "WATCH_BATTERY", "Left"), (1, 332, 185, "STEP_COUNT", "Right")]
-BOTTOM = (2, 150, 378, 150, 32)    # slot, x, y, w, h: a wide one along the bottom
-NUM_SIZE = 150
-
-# Each look: hours (accent), minutes and date (text), Shire date, mealtime, the ring's ticks, and
-# the complication background. (The ring's daylight and the sun or moon are drawn once over all looks.)
-STYLE = {
-    "shire": dict(back="shire-back", hours="#FFF2D06B", text="#FFF1F4E6", lore="#FFB9D79A", meal="#FFA3B59B",
-                  ticks="#99F1F4E6", plate="#2EB9D79A"),
-    "redbook": dict(back="redbook-back", hours="#FFF07A62", text="#FFF6ECD6", lore="#FFE6C79A", meal="#FFC2A08A",
-                    ticks="#99F6ECD6", plate="#2EF07A62"),
-    "starlit": dict(back="starlit-back", hours="#FFE9CC88", text="#FFF6F0E2", lore="#FFA9BCE6", meal="#FF8E97B0",
-                    ticks="#80F6F0E2", plate="#24FFFFFF"),
-    "elven": dict(back="elven-back", hours="#FFC6DDE8", text="#FFF4F7F8", lore="#FFA2B3BB", meal="#FF7F8C93",
-                  ticks="#73F4F7F8", plate="#1FFFFFFF"),
+NUM_SIZE = 112
+# where the words sit: the time high on the face over the scene (Rivendell's lower, under the trees' crowns)
+LAYOUT = {
+    "top": dict(date=(55, 44, 340, 28), hours=(75, 62, 300, 106), mins=(75, 152, 300, 106), meal=(95, 258, 260, 30)),
+    "low": dict(date=(55, 92, 340, 26), hours=(75, 110, 300, 106), mins=(75, 200, 300, 106), meal=(95, 296, 260, 30)),
 }
-AMBIENT = dict(hours="#FF9C9C9C", text="#FFB8B8B8", lore="#FF8A8A8A", ticks="#FF6A6A6A")
+COMP_D = 62
+COMPS = [(0, 37, 169, "WATCH_BATTERY", "Left"), (1, 351, 169, "STEP_COUNT", "Right")]
 COMP_TEXT = "#FFF4F4F4"
+
+# Each look's type colours (hours, minutes, date line, mealtime) and the complication discs.
+STYLE = {
+    "shire": dict(layout="top", hours="#FF24452A", mins="#FF3F6B3A", lore="#FF55703F", meal="#FFF3E6BC", pill="#FF24452A",
+                  plate="#E624452A"),
+    "redbook": dict(layout="top", hours="#FFFBEBD0", mins="#FFF2B48A", lore="#FFF2B48A", meal="#FFFBEBD0", pill=None,
+                    plate="#40FBEBD0"),
+    "starlit": dict(layout="top", hours="#FFF6D27A", mins="#FFF4EAD0", lore="#FFB9AEE0", meal="#FFF6D27A", pill=None,
+                    plate="#2EF4EAD0"),
+    "elven": dict(layout="low", hours="#FFE6F4F6", mins="#FF7FC8CC", lore="#FF7FC8CC", meal="#FFC9D8DC", pill=None,
+                  plate="#B305090B"),
+}
+AMBIENT = dict(hours="#FFB0B0B0", mins="#FFB0B0B0", lore="#FF8A8A8A", meal="#FF8A8A8A")
+
+# Seasons by the month, flipped south of the equator (from the time zone's main city).
+NORTH_SEASON = "(([MONTH] == 12 || [MONTH] <= 2) ? 3 : (([MONTH] <= 5) ? 0 : (([MONTH] <= 8) ? 1 : 2)))"
+SOUTH = f"({KNOWN} && {LAT} < 0)"
+SEASON = f"({SOUTH} ? (({NORTH_SEASON} + 2) % 4) : {NORTH_SEASON})"
+
+# The watch's own weather (Wear OS 5): its conditions folded into the few the scenes draw.
+WX = "[WEATHER.CONDITION]"
+WEATHER = {
+    "cloudy": f"({WX} == 2)",
+    "fog": f"({WX} == 3 || {WX} == 13)",
+    "rain": f"({WX} == 4 || {WX} == 6 || {WX} == 9 || {WX} == 10 || {WX} == 12)",
+    "snow": f"({WX} == 5 || {WX} == 7 || {WX} == 11)",
+}
 
 
 # ------------------------------------------------------------------ XML helpers
@@ -311,8 +345,8 @@ def glide(target, value, fps=12, interp="LINEAR", dur=1):
 AMBIENT_OFF = '<Variant mode="AMBIENT" target="alpha" value="0"/>'
 
 
-def image(name, x, y, w, h, transforms="", extra=""):
-    return (f'<PartImage x="{round(x)}" y="{round(y)}" width="{w}" height="{h}" pivotX="0.5" pivotY="0.5"{extra}>'
+def image(name, x, y, w, h, transforms="", extra="", px=0.5, py=0.5):
+    return (f'<PartImage x="{round(x)}" y="{round(y)}" width="{w}" height="{h}" pivotX="{px}" pivotY="{py}"{extra}>'
             f'{transforms}<Image resource="{res_name(name)}"/></PartImage>')
 
 
@@ -323,22 +357,21 @@ def dot(x, y, r, color, transforms=""):
             f'<Ellipse x="{pad:.2f}" y="{pad:.2f}" width="{r * 2:.2f}" height="{r * 2:.2f}"><Fill color="{color}"/></Ellipse></PartDraw>')
 
 
-def font(family, size, color, template, params, slant="NORMAL", spacing=None, outline=None):
+def font(family, size, color, template, params, slant="NORMAL", spacing=None):
     sp = f' letterSpacing="{spacing}"' if spacing is not None else ""
     ps = "".join(f'<Parameter expression="{a(p)}"/>' for p in params)
-    deco = f'<Outline color="{outline}" width="2"/>' if outline else ""
     return (f'<Font family="{family}" size="{size}" color="{color}" slant="{slant}" weight="NORMAL"{sp}>'
-            f'{deco}<Template>{a(template)}{ps}</Template></Font>')
+            f'<Template>{a(template)}{ps}</Template></Font>')
 
 
 APP = "com.middleearth.launcher/com.middleearth.lembas.wear.MainActivity"   # the Lembas watch app
 
 
-def text(box, family, size, color, template, params, slant="NORMAL", spacing=None, launch=None, outline=None):
+def text(box, family, size, color, template, params, slant="NORMAL", spacing=None, launch=None):
     x, y, w, h = box
     tap = f'<Launch target="{launch}"/>' if launch else ""
     return (f'<PartText x="{x}" y="{y}" width="{w}" height="{h}">{tap}<Text align="CENTER" ellipsis="TRUE">'
-            f'{font(family, size, color, template, params, slant, spacing, outline)}</Text></PartText>')
+            f'{font(family, size, color, template, params, slant, spacing)}</Text></PartText>')
 
 
 def group(name, body, extra=""):
@@ -352,130 +385,165 @@ def disc(cx, cy, d, fill):
             f'<Ellipse x="{o:.2f}" y="{o:.2f}" width="{d:.2f}" height="{d:.2f}"><Fill color="{fill}"/></Ellipse></PartDraw>')
 
 
-def tinted(name, color):
-    return image(name, 0, 0, S, S, extra=f' tintColor="{color}"')
+def pill(x, y, w, h, fill):
+    return (f'<PartDraw x="{x}" y="{y}" width="{w}" height="{h}"><RoundRectangle x="0" y="0" width="{w}" height="{h}" '
+            f'cornerRadiusX="{h / 2:g}" cornerRadiusY="{h / 2:g}"><Fill color="{fill}"/></RoundRectangle></PartDraw>')
 
 
-# ------------------------------------------------------------------ the face
-def ring_xy(w):
-    """x and y (for a sprite w wide) on the sun ring for the time of day: midnight at the bottom, noon at the top."""
-    ang = f"rad({MINS} * 0.25 + 180)"
-    return f"{C - w / 2:g} + {RING_R} * sin({ang})", f"{C - w / 2:g} - {RING_R} * cos({ang})"
+def condition(cases, default=""):
+    """cases: [(name, expression, body)] -> a Condition showing the first that's true."""
+    exprs = "".join(f'<Expression name="{n}"><![CDATA[{e}]]></Expression>' for n, e, _ in cases)
+    comps = "".join(f'<Compare expression="{n}">{b}</Compare>' for n, _, b in cases)
+    return f'<Condition><Expressions>{exprs}</Expressions>{comps}' + (f'<Default>{default}</Default>' if default else '') + '</Condition>'
 
 
-def moon(southern):
-    mx, my = ring_xy(26)
-    idx = "(floor(([MOON_PHASE_POSITION] + 1.75) / 3.5) % 8)"
-    flip = ' scaleX="-1"' if southern else ""
-    moon_img = lambda i: image(f"moon{i}", 0, 0, 26, 26, glide("x", mx) + glide("y", my), extra=flip)
-    cases = "".join(f'<Compare expression="m{i}">{moon_img(i)}</Compare>' for i in range(1, 8))
-    exprs = "".join(f'<Expression name="m{i}"><![CDATA[{idx} == {i}]]></Expression>' for i in range(1, 8))
-    return f'<Condition><Expressions>{exprs}</Expressions>{cases}<Default>{moon_img(0)}</Default></Condition>'
+def fade(p):   # 0 at both ends of a loop, so a part can jump back to its start unseen
+    return f"(0.5 - 0.5 * cos(6.28319 * {p}))"
 
 
-def sky_marker():
-    """The sun on the ring by day; by night, the moon in tonight's phase (mirrored in the south)."""
-    sx, sy = ring_xy(40)
-    sun = image("sun", 0, 0, 40, 40, glide("x", sx) + glide("y", sy) + glide("alpha", f"200 + 55 * {wave(6)}", fps=8))
-    hx, hy = ring_xy(40)
-    night = (image("moonhalo", 0, 0, 40, 40, glide("x", hx) + glide("y", hy))
-             + group("moon", f'<BooleanConfiguration id="southern"><BooleanOption id="TRUE">{group("moon-s", moon(True))}</BooleanOption>'
-                             f'<BooleanOption id="FALSE">{group("moon-n", moon(False))}</BooleanOption></BooleanConfiguration>'))
-    return (f'<Condition><Expressions><Expression name="day"><![CDATA[{IS_DAY} == 1]]></Expression></Expressions>'
-            f'<Compare expression="day">{sun}</Compare><Default>{group("night", night)}</Default></Condition>')
+# ------------------------------------------------------------------ the moving parts
+def backdrop(look):
+    """The season's picture (four pictures, chosen by the month)."""
+    names = BACKS[look]
+    if len(set(names.values())) == 1:
+        return image(names["summer"], 0, 0, S, S)
+    cases = [(f"{look}_s{i}", f"{SEASON} == {i}", image(names[se], 0, 0, S, S)) for i, se in enumerate(SEASONS[:-1])]
+    return condition(cases, image(names["winter"], 0, 0, S, S))
 
 
-def twinkles(look):
-    if look not in ("starlit", "elven"):
-        return ""
-    rnd = random.Random(7 if look == "starlit" else 8)
-    spots = [(118, 64), (334, 70), (64, 132), (390, 140), (70, 318), (384, 312)]
-    return "".join(dot(x, y, rnd.uniform(1.1, 1.7), "#FFF4F1E8", glide("alpha", f"40 + 215 * {wave(rnd.randint(4, 8), rnd.randint(0, 7))}", fps=8))
+def twinkles(seed, spots):
+    rnd = random.Random(seed)
+    return "".join(dot(x, y, rnd.uniform(1.1, 1.8), "#FFF4F1E8", glide("alpha", f"40 + 215 * {wave(rnd.randint(4, 8), rnd.randint(0, 7))}", fps=8))
                    for x, y in spots)
+
+
+def shire_motion():
+    out = image("sunglow", 96 - 110, 300 - 110, 220, 220, glide("alpha", f"90 + 120 * {wave(7)}", fps=8)
+                + glide("scaleX", f"0.94 + 0.1 * {wave(7)}", fps=8) + glide("scaleY", f"0.94 + 0.1 * {wave(7)}", fps=8))
+    for k in range(3):   # chimney smoke: puffs rise, drift and fade
+        p = phase(6, k * 2)
+        out += image("puff", 0, 0, 24, 24, glide("x", f"346 + 22 * {p}") + glide("y", f"300 - 74 * {p}")
+                     + glide("scaleX", f"0.5 + 0.9 * {p}") + glide("scaleY", f"0.5 + 0.9 * {p}") + glide("alpha", f"190 * {fade(p)}"))
+    return out
+
+
+def redbook_motion():
+    out = ""
+    for name, x, y, w, h, dur in (("flame-outer", 165, 244, 120, 206, 2.6), ("flame-mid", 183, 314, 84, 130, 1.9), ("flame-inner", 205, 364, 40, 72, 1.3)):
+        out += image(name, x, y, w, h, glide("scaleY", f"0.9 + 0.16 * {wave(dur)}", fps=12, interp="EASE_IN_OUT")
+                     + glide("scaleX", f"1.04 - 0.08 * {wave(dur, dur / 3)}", fps=12, interp="EASE_IN_OUT"), px=0.5, py=1.0)
+    out += image("logs", 0, 0, S, S)
+    rnd = random.Random(5)
+    for k in range(7):   # embers
+        p = phase(rnd.uniform(3, 5), rnd.uniform(0, 5))
+        x0 = rnd.uniform(195, 255)
+        out += dot(0, 0, rnd.uniform(1.6, 2.6), "#FFFFC56A", glide("x", f"{x0:.0f} + 24 * sin(6.28 * {p})") + glide("y", f"300 - 90 * {p}")
+                   + glide("alpha", f"230 * {fade(p)}"))
+    return out
+
+
+def moon_phase():
+    """Tonight's moon, in its real phase (mirrored for the southern hemisphere)."""
+    idx = "(floor(([MOON_PHASE_POSITION] + 1.75) / 3.5) % 8)"
+    img = lambda i, flip: image(f"moon{i}", 118 - 32, 233 - 32, 64, 64, extra=' scaleX="-1"' if flip else "")
+    def pick(flip):
+        return condition([(f"m{i}{'s' if flip else 'n'}", f"{idx} == {i}", img(i, flip)) for i in range(1, 8)], img(0, flip))
+    return condition([("south_moon", SOUTH, pick(True))], pick(False))
+
+
+def starlit_motion():
+    out = image("moonglow", 118 - 70, 233 - 70, 140, 140, glide("alpha", f"150 + 105 * {wave(8)}", fps=8))
+    out += moon_phase()
+    out += twinkles(7, [(40, 60), (150, 30), (300, 36), (420, 110), (24, 160), (402, 196), (180, 300), (270, 286)])
+    p = phase(29, 3)   # a shooting star now and then
+    out += image("shooting", 0, 0, 100, 34, glide("x", f"250 + 110 * {p}") + glide("y", f"18 + 34 * {p}")
+                 + glide("alpha", f"(({p}) < 0.1) ? 255 * sin(31.4 * ({p})) : 0", fps=15))
+    return out
+
+
+def elven_motion():
+    out = image("elven-star", 225 - 40, 50 - 40, 80, 80, glide("alpha", f"150 + 105 * {wave(5)}", fps=8)
+                + glide("scaleX", f"0.85 + 0.22 * {wave(5)}", fps=8) + glide("scaleY", f"0.85 + 0.22 * {wave(5)}", fps=8))
+    out += twinkles(8, [(118, 40), (334, 44), (60, 70), (392, 76), (170, 20), (290, 18)])
+    rnd = random.Random(9)
+    for k in range(8):   # motes of light drifting up from the knoll
+        p = phase(rnd.uniform(9, 15), rnd.uniform(0, 14))
+        x0 = rnd.uniform(120, 330)
+        out += dot(0, 0, rnd.uniform(1.6, 2.4), "#FFDCEBF0", glide("x", f"{x0:.0f} + 12 * sin(6.28 * {p})") + glide("y", f"430 - 130 * {p}")
+                   + glide("alpha", f"200 * {fade(p)}"))
+    return out
+
+
+MOTION = {"shire": shire_motion, "redbook": redbook_motion, "starlit": starlit_motion, "elven": elven_motion}
+
+
+def weather(look):
+    """Cloud, fog, rain or snow from the watch's weather; never indoors by the fire."""
+    if look == "redbook":
+        return ""
+    light = look == "shire"
+    cloud_alpha = 235 if light else 120
+    clouds = "".join(image("cloud", 0, y, 150, 60, glide("x", f"-160 + 610 * {phase(dur, off)}") + tr("alpha", str(cloud_alpha))
+                                  + tr("scaleX", str(sc)) + tr("scaleY", str(sc)), extra='' if light else ' tintColor="#FF8A90B8"')
+                     for y, dur, off, sc in ((14, 90, 0, 1.3), (52, 120, 50, 1.0), (300, 150, 100, 1.2)))
+    fog = "".join(image("fog", 0, y, 600, 120, glide("x", f"-150 + 100 * {wave(60, off)}") + tr("alpha", "255"))
+                  for y, off in ((250, 0), (330, 30)))
+    loop = lambda kind: (f'<PartAnimatedImage x="0" y="0" width="{S}" height="{S}">'
+                         f'<AnimationController play="ON_VISIBLE" repeat="TRUE" loopCount="0" resumePlayBack="TRUE" beforePlaying="FIRST_FRAME" afterPlaying="FIRST_FRAME"/>'
+                         f'<SequenceImages loopCount="0" frameRate="10">' + "".join(f'<Image resource="{res_name(f"{kind}{i}")}"/>' for i in range(8))
+                         + '</SequenceImages></PartAnimatedImage>')
+    cases = [(f"{look}_cloudy", WEATHER["cloudy"], clouds), (f"{look}_fog", WEATHER["fog"], fog),
+             (f"{look}_rain", WEATHER["rain"], loop("rain")), (f"{look}_snow", WEATHER["snow"], loop("snow"))]
+    return condition([(f"{look}_wx", "[WEATHER.IS_AVAILABLE]", condition(cases))])
 
 
 def words(st, ambient=False):
     """Tap the date for the calendar, the time for alarms, the Shire date or mealtime for Lembas."""
+    lay = LAYOUT[st["layout"]] if not ambient else LAYOUT["top"]
     tap = (lambda t: None) if ambient else (lambda t: t)
-    out = text(DATE_BOX, "alegreya_sans", 24, st["text"], "%s %s", ["[DAY_OF_WEEK_S]", "[DAY]"], spacing=0.02, launch=tap("CALENDAR"))
-    out += text(LORE_BOX, "lore_italic", 21, st["lore"], "%s · %s %s", [WD, SHIRE_DAY, shire_name()], slant="ITALIC", launch=tap(APP))
-    if ambient:   # thin numerals in grey: few lit pixels, and they drift (see ambient_group)
-        out += text(HOURS_BOX, "numerals_light", NUM_SIZE, st["hours"], "%s", [HOUR_Z])
-        out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"])
-    else:
-        out += text(HOURS_BOX, "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z], launch="ALARM")
-        out += text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], "%s", ["[MINUTE_Z]"], launch="ALARM")
-        out += text(MEAL_BOX, "lore_italic", 20, st["meal"], "%s", [MEAL], slant="ITALIC", launch=APP)
+    out = text(lay["date"], "alegreya_sans", 20, st["lore"], "%s %s  ·  %s %s",
+               ["[DAY_OF_WEEK_S]", "[DAY]", SHIRE_DAY, shire_name()], spacing=0.02, launch=tap(APP))
+    out += text(lay["hours"], "numerals_light" if ambient else "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z], launch=tap("ALARM"))
+    out += text(lay["mins"], "numerals_light", NUM_SIZE, st["mins"], "%s", ["[MINUTE_Z]"], launch=tap("ALARM"))
+    if not ambient:
+        x, y, w, h = lay["meal"]
+        if st.get("pill"):
+            out += pill(x + 30, y, w - 60, h, st["pill"])
+        out += text(lay["meal"], "lore_italic", 21, st["meal"], "%s", [MEAL], slant="ITALIC", launch=APP)
     return out
 
 
 def look_group(look):
     st = STYLE[look]
-    scene = image(st["back"], 0, 0, S, S) + twinkles(look)
-    scene += tinted("ticks", st["ticks"])
+    scene = backdrop(look) + MOTION[look]() + weather(look)
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
-    return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st)))
+    return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st))
+                 + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>' + ambient(look), extra=' alpha="0"'))
 
 
-RING_RISE = f"({KNOWN} ? {RISE} : 360)"
-RING_SET = f"({KNOWN} ? {SET} : 1080)"
-
-
-def ring_arc(start, end, color, width):
-    d = RING_R * 2
-    return (f'<PartDraw x="0" y="0" width="{S}" height="{S}"><Arc centerX="{C:g}" centerY="{C:g}" width="{d}" height="{d}" startAngle="0" endAngle="180">'
-            f'{tr("startAngle", start)}{tr("endAngle", end)}<Stroke color="{color}" thickness="{width}" cap="ROUND"/></Arc></PartDraw>')
-
-
-def sun_ring():
-    """Drawn once over every look: the day's real daylight (sunrise to sunset) as the bright part of
-    the ring, the night as the faint part, and the sun or the moon at the time of day."""
-    day = ring_arc(f"{RING_RISE} * 0.25 + 180", f"{RING_SET} * 0.25 + 180", "#C8FFF1D2", 2.6)
-    night = ring_arc(f"{RING_SET} * 0.25 + 180", f"{RING_RISE} * 0.25 + 540", "#38FFFFFF", 1.4)
-    return f'<Group name="sun-ring" x="0" y="0" width="{S}" height="{S}">{AMBIENT_OFF}{night}{day}{sky_marker()}</Group>'
-
-
-def ambient_group():
-    """The always-on display: the hours and minutes in light grey numerals, the four main ticks and the date."""
-    out = tinted("ticks-major", AMBIENT["ticks"])
-    # the words drift by a few pixels each minute, so no pixel stays lit for hours
+def ambient(look):
+    """The always-on display: the scene as fine grey lines, thin numerals; it all drifts a few pixels each minute."""
     shift = (f'<Transform target="x" value="{a("3 * sin(rad([MINUTE] * 47))")}"/>'
              f'<Transform target="y" value="{a("3 * cos(rad([MINUTE] * 61))")}"/>')
-    out += f'<Group name="ambient-words" x="0" y="0" width="{S}" height="{S}">{shift}{words(AMBIENT, ambient=True)}</Group>'
-    return f'<Group name="ambient" x="0" y="0" width="{S}" height="{S}" alpha="0"><Variant mode="AMBIENT" target="alpha" value="255"/>{out}</Group>'
+    art = image(f"{look}-outline", 0, 0, S, S, extra=' alpha="150"')
+    return group(f"{look}-ambient-drift", shift + art + words(AMBIENT, ambient=True))
 
 
 def complication(slot, x, y, provider, label):
     d = COMP_D
     icon = lambda ix, iy, s: (f'<PartImage x="{ix}" y="{iy}" width="{s}" height="{s}" tintColor="{COMP_TEXT}">'
                               f'<Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/></PartImage>')
-    short = icon(28, 12, 24) + text((4, 38, d - 8, 30), "alegreya_sans", 25, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"])
+    short = icon(21, 8, 20) + text((3, 28, d - 6, 26), "alegreya_sans", 21, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"])
     frac = "clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"
     arc = lambda color, extra: (f'<PartDraw x="0" y="0" width="{d}" height="{d}"><Arc centerX="{d / 2:g}" centerY="{d / 2:g}" width="{d - 6}" height="{d - 6}" startAngle="0" endAngle="360">'
-                                f'{extra}<Stroke color="{color}" thickness="4" cap="ROUND"/></Arc></PartDraw>')
+                                f'{extra}<Stroke color="{color}" thickness="3.5" cap="ROUND"/></Arc></PartDraw>')
     ranged = (arc("#33FFFFFF", "") + arc(COMP_TEXT, tr("endAngle", f"360 * {frac}"))
-              + icon(29, 13, 22) + text((8, 36, d - 16, 28), "alegreya_sans", 23, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"]))
+              + icon(22, 10, 18) + text((7, 27, d - 14, 24), "alegreya_sans", 19, COMP_TEXT, "%s", ["[COMPLICATION.TEXT]"]))
     return (f'<ComplicationSlot slotId="{slot}" name="slot{slot}" displayName="{label}" x="{x}" y="{y}" width="{d}" height="{d}" '
             f'supportedTypes="SHORT_TEXT RANGED_VALUE EMPTY" isCustomizable="TRUE">'
             f'<DefaultProviderPolicy defaultSystemProvider="{provider}" defaultSystemProviderType="SHORT_TEXT"/>'
             f'<BoundingOval x="0" y="0" width="{d}" height="{d}"/>'
             f'<Complication type="SHORT_TEXT">{short}</Complication><Complication type="RANGED_VALUE">{ranged}</Complication>'
-            f'<Complication type="EMPTY"/></ComplicationSlot>')
-
-
-def bottom_complication():
-    slot, x, y, w, h = BOTTOM
-    pill = (f'<PartDraw x="0" y="0" width="{w}" height="{h}"><RoundRectangle x="0" y="0" width="{w}" height="{h}" cornerRadiusX="{h / 2:g}" cornerRadiusY="{h / 2:g}">'
-            f'<Fill color="#26FFFFFF"/></RoundRectangle></PartDraw>')
-    icon = (f'<PartImage x="10" y="7" width="18" height="18" tintColor="{COMP_TEXT}">'
-            f'<Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/></PartImage>')
-    words = lambda tmpl: text((32, 0, w - 40, h), "alegreya_sans", 19, COMP_TEXT, "%s", [tmpl])
-    return (f'<ComplicationSlot slotId="{slot}" name="slot{slot}" displayName="Bottom" x="{x}" y="{y}" width="{w}" height="{h}" '
-            f'supportedTypes="SHORT_TEXT LONG_TEXT EMPTY" isCustomizable="TRUE">'
-            f'<DefaultProviderPolicy defaultSystemProvider="NEXT_EVENT" defaultSystemProviderType="SHORT_TEXT"/>'
-            f'<BoundingBox x="0" y="0" width="{w}" height="{h}"/>'
-            f'<Complication type="SHORT_TEXT">{icon}{words("[COMPLICATION.TEXT]")}</Complication>'
-            f'<Complication type="LONG_TEXT">{icon}{words("[COMPLICATION.TEXT]")}</Complication>'
             f'<Complication type="EMPTY"/></ComplicationSlot>')
 
 
@@ -495,92 +563,75 @@ def watchface_xml():
             '<ListOption id="auto" displayName="Follow the sun"/><ListOption id="shire" displayName="Shire Morning"/>'
             '<ListOption id="redbook" displayName="Red Book"/><ListOption id="starlit" displayName="Starlit Night"/>'
             '<ListOption id="elven" displayName="Elven Silver"/></ListConfiguration>'
-            '<BooleanConfiguration id="southern" displayName="Southern hemisphere moon" defaultValue="FALSE"/>'
             '</UserConfigurations>'
             '<Scene backgroundColor="#FF000000">'
             f'<ListConfiguration id="look">{options}</ListConfiguration>'
-            + sun_ring()
-            + ambient_group()
             + "".join(complication(*c) for c in COMPS)
-            + bottom_complication()
             + '</Scene></WatchFace>\n')
 
 
 # ------------------------------------------------------------------ still pictures (picker preview, app backgrounds, checks)
-SAMPLE = {   # look: (time minutes past midnight, hours, minutes, date, Shire date, meal, complications)
-    "shire": (561, "09", "21", "Wed 21", "Hevensday · 30 Winterfilth", "Second breakfast", ("80%", "4,512")),
-    "redbook": (930, "03", "30", "Wed 21", "Hevensday · 30 Winterfilth", "Afternoon tea", ("64%", "9,870")),
-    "starlit": (1205, "08", "05", "Wed 21", "Hevensday · 30 Winterfilth", "Supper", ("41%", "11,204")),
-    "elven": (90, "01", "30", "Wed 21", "Hevensday · 30 Winterfilth", "The Shire sleeps", ("23%", "12,640")),
-    "ambient": (90, "01", "30", "Wed 21", "Hevensday · 30 Winterfilth", None, ("23%", "12,640")),
+SAMPLE = {   # look: (hours, minutes, date line, meal, complications)
+    "shire": ("09", "21", "Sat 31  ·  10 Blotmath", "Second breakfast", ("80%", "4,512")),
+    "redbook": ("03", "30", "Sat 31  ·  10 Blotmath", "Afternoon tea", ("64%", "9,870")),
+    "starlit": ("08", "05", "Sat 31  ·  10 Blotmath", "Supper", ("41%", "11,204")),
+    "elven": ("01", "30", "Sat 31  ·  10 Blotmath", "The Shire sleeps", ("23%", "12,640")),
 }
 
 
-def still(look, with_words=True):
+def still(look, with_words=True, ambient_mode=False, season="summer"):
     from PIL import Image, ImageDraw, ImageFont
     src = RES / "drawable-nodpi"
     fonts = RES / "font"
     hexc = lambda c: (int(c[3:5], 16), int(c[5:7], 16), int(c[7:9], 16), int(c[1:3], 16))
     img = Image.new("RGBA", (S, S), (0, 0, 0, 255))
     load = lambda n: Image.open(src / f"{res_name(n)}.png").convert("RGBA")
-
-    def tint(n, col):
-        im = load(n)
-        r, g, b, al = hexc(col)
-        solid = Image.new("RGBA", im.size, (r, g, b, 255))
-        solid.putalpha(Image.eval(im.getchannel("A"), lambda v: v * al // 255))
-        img.alpha_composite(solid)
-
-    mins, hh, mm, date, lore, meal, comps = SAMPLE[look]
-    st = STYLE.get(look)
-    if st:
-        img.alpha_composite(load(st["back"]))
-        rise, sset = 350, 1160      # a sample day: Sydney, late October
-        ring = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-        rd = ImageDraw.Draw(ring)
-        box = (C - RING_R, C - RING_R, C + RING_R, C + RING_R)
-        clock = lambda m: m * 0.25 + 180 - 90      # PIL measures from 3 o'clock
-        rd.arc(box, clock(sset), clock(rise) + 360, fill=(255, 255, 255, 56), width=1)
-        rd.arc(box, clock(rise), clock(sset), fill=(255, 241, 210, 200), width=3)
-        img.alpha_composite(ring)
-        tint("ticks", st["ticks"])
+    put = lambda n, x, y: img.alpha_composite(load(n), (int(x), int(y)))
+    st = AMBIENT if ambient_mode else STYLE[look]
+    if ambient_mode:
+        o = load(f"{look}-outline")
+        o.putalpha(o.getchannel("A").point(lambda v: v * 150 // 255))
+        img.alpha_composite(o)
     else:
-        st = AMBIENT
-        tint("ticks-major", AMBIENT["ticks"])
+        img.alpha_composite(load(BACKS[look][season]))
+        if look == "shire":
+            put("sunglow", 96 - 110, 300 - 110)
+            for k in range(3):
+                put("puff", 346 + 8 * k, 300 - 26 * k)
+        if look == "redbook":
+            put("flame-outer", 165, 244); put("flame-mid", 183, 314); put("flame-inner", 205, 364); put("logs", 0, 0)
+        if look == "starlit":
+            put("moonglow", 118 - 70, 233 - 70); put("moon2", 118 - 32, 233 - 32)
+        if look == "elven":
+            put("elven-star", 225 - 40, 50 - 40)
     if not with_words:
         return img
     dr = ImageDraw.Draw(img)
-    if look != "ambient":
-        layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-        for _, x, y, _, _ in COMPS:
-            ImageDraw.Draw(layer).ellipse((x, y, x + COMP_D, y + COMP_D), fill=hexc(st["plate"]))
-        img.alpha_composite(layer)
-        ang = math.radians(mins * 0.25 + 180)
-        day = 350 <= mins < 1160
-        n = "sun" if day else "moon3"
-        w = 40 if day else 18
-        if not day:
-            img.alpha_composite(load("moonhalo"), (int(C - 20 + RING_R * math.sin(ang)), int(C - 20 - RING_R * math.cos(ang))))
-        img.alpha_composite(load(n), (int(C - w / 2 + RING_R * math.sin(ang)), int(C - w / 2 - RING_R * math.cos(ang))))
+    hh, mm, date, meal, comps = SAMPLE[look]
+    lay = LAYOUT["top" if ambient_mode else st["layout"]]
 
     def box_text(box, fam, size, col, s):
         x, y, w, h = box
         f = ImageFont.truetype(str(fonts / f"{fam}.ttf"), size)
         asc, desc = f.getmetrics()
-        tw = f.getlength(s)
-        dr.text((x + (w - tw) / 2, y + (h - (asc + desc)) / 2), s, font=f, fill=hexc(col))
+        dr.text((x + (w - f.getlength(s)) / 2, y + (h - (asc + desc)) / 2), s, font=f, fill=hexc(col))
 
-    amb = look == "ambient"
-    box_text(DATE_BOX, "alegreya_sans", 24, st["text"], date)
-    box_text(LORE_BOX, "lore_italic", 21, st["lore"], lore)
-    box_text(HOURS_BOX, "numerals_light" if amb else "numerals_heavy", NUM_SIZE, st["hours"], hh)
-    box_text(MINS_BOX, "numerals_light", NUM_SIZE, st["text"], mm)
-    if meal:
-        box_text(MEAL_BOX, "lore_italic", 20, st["meal"], meal)
-    if not amb:
+    box_text(lay["date"], "alegreya_sans", 20, st["lore"], date)
+    box_text(lay["hours"], "numerals_light" if ambient_mode else "numerals_heavy", NUM_SIZE, st["hours"], hh)
+    box_text(lay["mins"], "numerals_light", NUM_SIZE, st["mins"], mm)
+    if not ambient_mode:
+        x, y, w, h = lay["meal"]
+        if st.get("pill"):
+            dr.rounded_rectangle((x + 30, y, x + w - 30, y + h), radius=h / 2, fill=hexc(st["pill"]))
+        box_text(lay["meal"], "lore_italic", 21, st["meal"], meal)
+        layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+        for _, x, y, _, _ in COMPS:
+            ImageDraw.Draw(layer).ellipse((x, y, x + COMP_D, y + COMP_D), fill=hexc(st["plate"]))
+        img.alpha_composite(layer)
+        dr = ImageDraw.Draw(img)
         for (_, x, y, _, _), v in zip(COMPS, comps):
-            dr.ellipse((x + 33, y + 15, x + 47, y + 31), outline=hexc(COMP_TEXT), width=2)
-            box_text((x + 4, y + 38, COMP_D - 8, 30), "alegreya_sans", 25, COMP_TEXT, v)
+            dr.ellipse((x + 25, y + 10, x + 37, y + 24), outline=hexc(COMP_TEXT), width=2)
+            box_text((x + 3, y + 28, COMP_D - 6, 26), "alegreya_sans", 21, COMP_TEXT, v)
     mask = Image.new("L", (S, S), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, S - 1, S - 1), fill=255)
     out = Image.new("RGBA", (S, S), (0, 0, 0, 255))
@@ -595,15 +646,18 @@ def write_stills(wear_res):
     if wear_res:
         out = Path(wear_res) / "drawable-nodpi"
         out.mkdir(parents=True, exist_ok=True)
-        for look in STYLE:   # the watch app's backgrounds: the look's light, without the words
-            Image.open(nodpi / f"{res_name(STYLE[look]['back'])}.png").convert("RGB").save(out / f"wl_{look}.png", optimize=True)
+        for look in STYLE:   # the watch app's backgrounds and the tile's: the look's scene, without the words
+            still(look, with_words=False).convert("RGB").save(out / f"wl_{look}.png", optimize=True)
         Image.open(nodpi / "wf_preview.png").save(out / "tile_preview.png")
     if PREVIEW:
         p = Path(PREVIEW)
         p.mkdir(parents=True, exist_ok=True)
-        sheet = Image.new("RGB", (S * 5 + 40, S + 20), (40, 40, 40))
-        for i, look in enumerate(["shire", "redbook", "starlit", "elven", "ambient"]):
-            sheet.paste(still(look).convert("RGB"), (10 + i * (S + 5), 10))
+        rows = [[still(k) for k in STYLE], [still(k, ambient_mode=True) for k in STYLE],
+                [still("shire", season=se) for se in SEASONS], [still("elven", season=se) for se in SEASONS]]
+        sheet = Image.new("RGB", (S * 4 + 35, S * 4 + 35), (40, 40, 40))
+        for r, row in enumerate(rows):
+            for i, im in enumerate(row):
+                sheet.paste(im.convert("RGB"), (7 + i * (S + 7), 7 + r * (S + 7)))
         sheet.save(p / "faces.png")
 
 

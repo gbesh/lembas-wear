@@ -28,32 +28,33 @@ Every push to `main` builds a new release. Releases are signed with the same key
 
 ## The watch face
 
-A clean, modern face in the four Lembas palettes:
+Four flat, colourful little scenes, drawn to match Lembas on the phone and the PC, that follow the sun:
 
-- **Large stacked numerals** (Fraunces): the hours heavy in the look's colour, the minutes light.
-- **The sun ring**, a 24-hour ring around the rim with noon at the top and midnight at the bottom. By day the sun travels across its bright half, from sunrise on the left to sunset on the right; at night it's the moon, in tonight's real phase.
-- **Wed 21** and the **Shire date** (e.g. *Hevensday · 30 Winterfilth*) above the time, and the **hobbit mealtime** below it (*Second breakfast*, *Afternoon tea*, … *The Shire sleeps*).
-- **Two complications**, one either side of the time (battery and steps by default), and a **wide one along the bottom** (your next event by default). Touch and hold the face → Customise to change them.
-- **Tap** the time for alarms, the date for your calendar, and the Shire date or the mealtime for the Lembas app.
-
-| Look | When (Follow the sun) | Colours |
+| Look | When (Follow the sun) | The scene |
 |---|---|---|
-| **Shire Morning** | sunrise → late afternoon | Deep green, lit with morning gold from above; golden hours |
-| **Red Book** | late afternoon → sunset | Oxblood, lit like a page by the fire; vermilion hours |
-| **Starlit Night** | sunset → 11pm, 4am → sunrise | **Black** with a little blue at the zenith and a few twinkling stars; gold hours |
-| **Elven Silver** | 11pm → 4am | **Black** with a breath of silver; silver-blue hours |
+| **Shire Morning** | sunrise → late afternoon | Green hills, the round green door, a low sun and chimney smoke |
+| **Red Book** | late afternoon → sunset | A crackling fire on deep red, embers rising |
+| **Starlit Night** | sunset → 11pm, 4am → sunrise | Violet mountains, a cabin with a lit window, tonight's real moon and the odd shooting star |
+| **Elven Silver** | 11pm → 4am | Two silver trees of Rivendell on a teal knoll, Eärendil's star, motes of light drifting up |
 
-The night looks are true black, which costs almost nothing on an OLED screen. **The same clock everywhere:** the face works out sunrise, late afternoon (the sun down to 15°) and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute, and the sun ring's bright part is today's real daylight. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) Touch and hold → Customise picks one look to keep instead, and has a **Southern hemisphere moon** switch.
+- **The seasons:** blossom in spring, golden hills and leaves in autumn, snow in winter (snow on the mountains, bare silver trees), worked out from the month and flipped south of the equator.
+- **The weather**, from the watch's own forecast: drifting cloud, fog, falling rain or snow over the scene (never indoors by the fire).
+- **Large stacked numerals** (Fraunces): the hours heavy, the minutes light; the date and the **Shire date** above (*Sat 31 · 10 Blotmath*) and the **hobbit mealtime** below (*Second breakfast*, *Afternoon tea*, … *The Shire sleeps*).
+- **Two complications**, either side of the time (battery and steps by default). Touch and hold the face → Customise to change them.
+- **Tap** the time for alarms, and the date or the mealtime for the Lembas app.
 
-**Always-on display:** the time in thin grey numerals, the date and Shire date, and the four main ticks. The words drift a few pixels each minute so no pixel stays lit for hours.
+**The same clock everywhere:** the face works out sunrise, late afternoon (the sun down to 15°) and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) Touch and hold → Customise picks one look to keep instead.
 
-**Light on the battery:** very little moves (the sun's glow, the sun or moon along the ring, a few stars at night). The animation values change at most once a second and the watch glides between them at 8–12 frames per second. Everything stops in ambient mode.
+**Always-on display:** the scene drawn as fine grey lines, with the time in thin numerals and the date. It all drifts a few pixels each minute so no pixel stays lit for hours.
+
+**Light on the battery:** only small things move (a glow, smoke, flames, a few stars and motes, the weather). The animation values change at most once a second and the watch glides between them at 8–12 frames per second; rain and snow are short 8-frame loops. Everything stops in ambient mode. The pictures are flat colour in 256-colour palettes, so the whole face is under a megabyte.
 
 ## The watch app and tile
 
 - **Lembas** (in the app list), in the same type and colours as the face: the date, the Shire date, the time (hours heavy, minutes light) and the mealtime, then **Favourites**, **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; a letter shows where you are in the alphabet while you do. **Touch and hold** an app to pin it to Favourites or open its info. At the bottom: the **look** (tap a swatch: follow the sun, or one look) and **Watch face & updates**.
 - Settings → Buttons can open Lembas with a double press of the side button.
-- **The Lembas tile:** the Shire weekday and date, your next alarm if one is due within 12 hours (otherwise the mealtime), your favourites (then latest apps) and an **All apps** button.
+- **The Lembas tile:** the Shire weekday and date, your next alarm if one is due within 12 hours (otherwise the mealtime), **when the look changes next** (*Starlit Night at 7:21 pm*), your favourites (then latest apps) and an **All apps** button.
+- **Lembas complications for any watch face:** the **Shire date**, the **hobbit mealtime** and the **next Lembas look**. On another face: touch and hold → Edit → a complication → Lembas.
 - **Wear OS 6:** to colour the watch's own menus and tiles from the face, set the watch's theme (in its Settings) to **match the watch face**.
 
 ## Building
@@ -72,7 +73,7 @@ The night looks are true black, which costs almost nothing on an OLED screen. **
 | Path | What it is |
 |---|---|
 | `watchface/` | The watch face: resources only, no code (Watch Face Format v2) |
-| `wear/art/watch.html` | The backgrounds, the sun ring, the sun and the moon phases, drawn in SVG |
+| `wear/art/watch.html` | The four scenes in each season, their outlines for the always-on display, and the moving parts (flames, moon phases, weather), drawn in SVG |
 | `wear/tools/make_watchface.py` | Renders the art, cuts fixed-weight fonts with lining figures, writes the watch face XML and the preview stills |
 | `wear/tools/emulator-shots.sh` | Test builds: installs both on a Wear OS emulator and captures each look |
 | `wear/src/.../MainActivity.kt` | The launcher app (Compose for Wear OS, Material 3) |

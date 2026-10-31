@@ -25,7 +25,7 @@ import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
 
 /**
- * The Lembas tile: the Quenya hour, the Shire date and the mealtime in the look's colours, with
+ * The Lembas tile: the Shire date, the mealtime and when the look next changes, in the look's colours, with
  * your four most recent apps one tap away, and a button for the full list.
  * It refreshes every quarter of an hour, and when you open an app from Lembas.
  */
@@ -117,7 +117,12 @@ class LembasTile : TileService() {
             .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(2f)).build())
             .addContent(text(Lore.shireDate(now.toLocalDate()), 17f, look.lore, italic = true))
             .addContent(text(subtitle(now), 13f, look.soft, italic = true))
-            .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(10f)).build())
+        // when the look changes next, so you know what's coming ("Starlit Night at 7:21 pm")
+        WearLooks.next(this, now)?.let { (next, at) ->
+            val h24 = android.text.format.DateFormat.is24HourFormat(this)
+            col.addContent(text("${next.title} at " + at.format(java.time.format.DateTimeFormatter.ofPattern(if (h24) "H:mm" else "h:mm a")), 11f, look.lore))
+        }
+        col.addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(10f)).build())
 
         val recents = recentComponents()
         if (recents.isNotEmpty()) {
