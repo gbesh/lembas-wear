@@ -566,25 +566,35 @@ def complication(slot, x, y, provider, label):
             f'<Complication type="EMPTY"/></ComplicationSlot>')
 
 
+LOOK_SOURCE = "com.middleearth.launcher/com.middleearth.lembas.wear.LookComplication"
+
+
+def look_link():
+    """The look chosen in the Lembas app (or on the phone or PC, through sync), read through a hidden
+    complication from the Lembas watch app: watch faces can't read an app's settings, but they can
+    read its complications. "auto" (or no Lembas app) leaves the face following the sun underneath;
+    a chosen look is drawn over it."""
+    cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"', look_group(k)) for k in ("shire", "redbook", "starlit", "elven")]
+    return (f'<ComplicationSlot slotId="9" name="look" displayName="Look" x="0" y="0" width="{S}" height="{S}" '
+            f'supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">'
+            f'<DefaultProviderPolicy primaryProvider="{LOOK_SOURCE}" primaryProviderType="SHORT_TEXT" '
+            f'defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"/>'
+            f'<BoundingBox x="0" y="0" width="1" height="1"/>'
+            f'<Complication type="SHORT_TEXT">{condition(cases)}</Complication>'
+            f'<Complication type="EMPTY"/></ComplicationSlot>')
+
+
 def watchface_xml():
     auto_exprs = "".join(f'<Expression name="{k}"><![CDATA[{v}]]></Expression>' for k, v in LOOK_EXPR.items())
     auto = (f'<Condition><Expressions>{auto_exprs}</Expressions>'
             + "".join(f'<Compare expression="{k}">{look_group(k)}</Compare>' for k in LOOK_EXPR)
             + f'<Default>{look_group("starlit")}</Default></Condition>')
-    options = f'<ListOption id="auto">{group("auto", auto)}</ListOption>'
-    for k in ("shire", "redbook", "starlit", "elven"):
-        options += f'<ListOption id="{k}">{look_group(k)}</ListOption>'
     return ('<?xml version="1.0" encoding="utf-8"?>\n'
             f'<WatchFace width="{S}" height="{S}" clipShape="CIRCLE">'
             '<Metadata key="CLOCK_TYPE" value="DIGITAL"/><Metadata key="PREVIEW_TIME" value="10:08:32"/>'
-            '<UserConfigurations>'
-            '<ListConfiguration id="look" displayName="Look" defaultValue="auto">'
-            '<ListOption id="auto" displayName="Follow the sun"/><ListOption id="shire" displayName="Shire Morning"/>'
-            '<ListOption id="redbook" displayName="Red Book"/><ListOption id="starlit" displayName="Starlit Night"/>'
-            '<ListOption id="elven" displayName="Elven Silver"/></ListConfiguration>'
-            '</UserConfigurations>'
             '<Scene backgroundColor="#FF000000">'
-            f'<ListConfiguration id="look">{options}</ListConfiguration>'
+            + group("auto", auto)
+            + look_link()
             + "".join(complication(*c) for c in COMPS)
             + '</Scene></WatchFace>\n')
 

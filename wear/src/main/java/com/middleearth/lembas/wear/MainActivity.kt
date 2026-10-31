@@ -81,6 +81,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WearUpdater.schedule(this)
         Chime.schedule(this)
+        // "look" in the launch intent picks a look (the tests use it; so can a shortcut)
+        intent?.getStringExtra("look")?.let { if (it == WearLook.AUTO || WearLook.ALL.any { l -> l.id == it }) WearLooks.setChoice(this, it) }
         setContent { LembasApp() }
     }
 

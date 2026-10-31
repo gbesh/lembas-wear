@@ -45,7 +45,7 @@ Four flat, colourful little scenes, drawn to match Lembas on the phone and the P
 - **Two complications**, either side of the time (battery and steps by default). Touch and hold the face → Customise to change them.
 - **Tap** the time for alarms, and the date or the mealtime for the Lembas app.
 
-**The same clock everywhere:** the face works out sunrise, late afternoon (the sun down to 15°) and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) Touch and hold → Customise picks one look to keep instead.
+**The same clock everywhere:** the face works out sunrise, late afternoon (the sun down to 15°) and sunset for your time zone's main city with exactly the same sums and cities as the phone launcher, the watch app and Lembas for Windows, so all of them change look at the same minute. (In a time zone Lembas doesn't know, it falls back to the watch's weather data for day and night.) **Choosing a look** happens in one place: the Lembas app on the watch (or on your phone or PC, through sync). The face follows it at once, reading the choice through a hidden Lembas complication, so the face and the app always agree.
 
 **Always-on display:** the scene drawn as fine grey lines, with the time in thin numerals and the date. It all drifts a few pixels each minute so no pixel stays lit for hours.
 
@@ -58,7 +58,7 @@ Four flat, colourful little scenes, drawn to match Lembas on the phone and the P
 - **The Lembas tile:** the Shire weekday and date, your next alarm if one is due within 12 hours (otherwise the mealtime), **when the look changes next** (*Starlit Night at 7:21 pm*), your favourites (then latest apps) and an **All apps** button.
 - **The Lembas day tile:** today's sun arc with the sun on it, sunrise and sunset, and when the look changes next.
 - **A tap on the wrist** (in the app, *Tap on the wrist*): a gentle double tap on the hour, or only at the hobbit mealtimes, never between 11pm and 7am. Off by default.
-- **In step with the phone:** the look chosen on the phone (or on Lembas for Windows, through the phone's sync) reaches the watch app, its tiles and complications over the watch link, and a look chosen on the watch goes back to the phone. The watch face keeps its own Look setting (touch and hold the face): watch faces can't read an app's settings, or the crown.
+- **In step with the phone:** the look chosen on the phone (or on Lembas for Windows, through the phone's sync) reaches the watch app, its tiles and complications over the watch link, and a look chosen on the watch goes back to the phone. The watch face follows too, through a hidden Lembas complication (watch faces can't read an app's settings directly).
 - **Lembas complications for any watch face:** the **Shire date**, the **hobbit mealtime** and the **next Lembas look**. On another face: touch and hold → Edit → a complication → Lembas.
 - **Wear OS 6:** to colour the watch's own menus and tiles from the face, set the watch's theme (in its Settings) to **match the watch face**.
 

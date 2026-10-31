@@ -70,3 +70,32 @@ class NextLookComplication : LembasComplication() {
         return Triple(clock(at), look.title.split(' ')[0], "${look.title} at ${clock(at)}")
     }
 }
+
+/**
+ * The look for the Lembas watch face (hidden: the face reads it to know which scene to show).
+ * "auto" means follow the sun. Updated the moment the look changes in the app, on the phone or
+ * on the PC (through sync).
+ */
+class LookComplication : ComplicationDataSourceService() {
+    override fun onComplicationRequest(request: ComplicationRequest, listener: ComplicationRequestListener) {
+        listener.onComplicationData(data(request.complicationType, WearLooks.choice(this)))
+    }
+
+    override fun getPreviewData(type: ComplicationType): ComplicationData? = data(type, WearLook.AUTO)
+
+    private fun data(type: ComplicationType, look: String): ComplicationData? {
+        if (type != ComplicationType.SHORT_TEXT) return null
+        val text = PlainComplicationText.Builder(look).build()
+        return ShortTextComplicationData.Builder(text, PlainComplicationText.Builder("Lembas look").build()).build()
+    }
+
+    companion object {
+        /** Tell the face straight away (after a choice in the app, from the phone, or when a kept look runs out). */
+        fun refresh(ctx: android.content.Context) {
+            try {
+                androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
+                    .create(ctx, android.content.ComponentName(ctx, LookComplication::class.java)).requestUpdateAll()
+            } catch (_: Throwable) { }
+        }
+    }
+}

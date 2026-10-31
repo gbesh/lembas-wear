@@ -44,6 +44,18 @@ adb logcat -d > "$S/full.txt" || true
 grep -E "DWF|middleearth|AndroidRuntime|DEBUG_SURFACE|WatchFaceRuntime" "$S/full.txt" | grep -v -E "RestrictionManager|Finsky|CanvasComplication" | tail -500 > "$S/logcat.txt" || true
 grep -E " [EW] " "$S/full.txt" | grep -v -E "RestrictionManager|Finsky" | tail -300 > "$S/logcat-errors.txt" || true
 rm -f "$S/full.txt"
+# the look chosen in the app reaches the face (through the hidden Lembas look complication)
+adb shell "date $(date +%m%d)0921$(date +%Y).00" || true
+adb shell am start -n com.middleearth.launcher/com.middleearth.lembas.wear.MainActivity --es look redbook
+sleep 4
+adb shell input keyevent KEYCODE_HOME
+sleep 8
+snap face-picked-redbook
+adb shell am start -n com.middleearth.launcher/com.middleearth.lembas.wear.MainActivity --es look auto
+sleep 4
+adb shell input keyevent KEYCODE_HOME
+sleep 8
+snap face-picked-auto
 adb shell am start -n com.middleearth.launcher/com.middleearth.lembas.wear.MainActivity
 sleep 6
 snap app-top

@@ -57,6 +57,7 @@ object WearLooks {
         val until = p.getLong(PREF_KEEP_UNTIL, 0)
         if (until > 0 && System.currentTimeMillis() >= until) {
             p.edit().putString(PREF_LOOK, WearLook.AUTO).remove(PREF_KEEP_UNTIL).apply()
+            LookComplication.refresh(ctx)
             return WearLook.AUTO
         }
         return p.getString(PREF_LOOK, WearLook.AUTO) ?: WearLook.AUTO
@@ -66,6 +67,7 @@ object WearLooks {
     fun setChoice(ctx: Context, id: String) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(PREF_LOOK, id).remove(PREF_KEEP_UNTIL).apply()
         LookLink.tellPhone(ctx, id)
+        LookComplication.refresh(ctx)   // the watch face follows
     }
 
     /** When the look next changes on its own, and to which (null if one look is kept). */

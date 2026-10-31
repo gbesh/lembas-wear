@@ -10,8 +10,8 @@ import com.google.android.gms.wearable.WearableListenerService
 
 /**
  * The look, kept in step with the phone over the watch link (and through the phone, with Lembas
- * for Windows). The watch app, its tile and the Lembas complications follow; the watch face has
- * its own Look setting (touch and hold the face) and follows the sun by itself.
+ * for Windows). The watch app, its tiles, the Lembas complications and the watch face all follow
+ * (the face through the hidden LookComplication).
  */
 object LookLink {
     const val PATH = "/lembas/look"
@@ -41,6 +41,7 @@ class PhoneLookListener : WearableListenerService() {
                 .putString(WearLooks.PREF_LOOK, if (look == "adaptive") WearLook.AUTO else look)
                 .putLong(WearLooks.PREF_KEEP_UNTIL, m.getLong("keepUntil", 0)).apply()
             LembasTile.refresh(this)
+            LookComplication.refresh(this)
         }
     }
 }
