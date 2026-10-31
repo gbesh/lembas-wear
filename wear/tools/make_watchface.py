@@ -532,12 +532,16 @@ def words(st, ambient=False):
     return out
 
 
-def look_group(look):
+def look_group(look, cover=False):
+    """[cover]: drawn over the follow-the-sun face (a look picked in the app), so its always-on
+    display blacks out the one underneath first."""
     st = STYLE[look]
     scene = backdrop(look) + MOTION[look]() + weather(look) + (dawn_dusk() if look in ("shire", "starlit") else "")
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
     return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st))
-                 + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>' + ambient(look), extra=' alpha="0"'))
+                 + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>'
+                         + (f'<PartDraw x="0" y="0" width="{S}" height="{S}"><Ellipse x="0" y="0" width="{S}" height="{S}"><Fill color="#FF000000"/></Ellipse></PartDraw>' if cover else "")
+                         + ambient(look), extra=' alpha="0"'))
 
 
 def ambient(look):
@@ -574,7 +578,7 @@ def look_link():
     complication from the Lembas watch app: watch faces can't read an app's settings, but they can
     read its complications. "auto" (or no Lembas app) leaves the face following the sun underneath;
     a chosen look is drawn over it."""
-    cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"', look_group(k)) for k in ("shire", "redbook", "starlit", "elven")]
+    cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"', look_group(k, cover=True)) for k in ("shire", "redbook", "starlit", "elven")]
     return (f'<ComplicationSlot slotId="9" name="look" displayName="Look" x="0" y="0" width="{S}" height="{S}" '
             f'supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">'
             f'<DefaultProviderPolicy primaryProvider="{LOOK_SOURCE}" primaryProviderType="SHORT_TEXT" '

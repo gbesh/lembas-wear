@@ -77,12 +77,21 @@ import java.time.format.DateTimeFormatter
  * A–Z; turn the crown (or swipe) to scroll. Long-press an app for its info page.
  */
 class MainActivity : ComponentActivity() {
+    private fun pickFrom(i: android.content.Intent?) {
+        i?.getStringExtra("look")?.let { if (it == WearLook.AUTO || WearLook.ALL.any { l -> l.id == it }) WearLooks.setChoice(this, it) }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        pickFrom(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WearUpdater.schedule(this)
         Chime.schedule(this)
         // "look" in the launch intent picks a look (the tests use it; so can a shortcut)
-        intent?.getStringExtra("look")?.let { if (it == WearLook.AUTO || WearLook.ALL.any { l -> l.id == it }) WearLooks.setChoice(this, it) }
+        pickFrom(intent)
         setContent { LembasApp() }
     }
 
