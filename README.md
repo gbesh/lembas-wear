@@ -38,7 +38,9 @@ Four flat, colourful little scenes, drawn to match Lembas on the phone and the P
 | **Elven Silver** | 11pm → 4am | Two silver trees of Rivendell on a teal knoll, Eärendil's star, motes of light drifting up |
 
 - **The seasons:** blossom in spring, golden hills and leaves in autumn, snow in winter (snow on the mountains, bare silver trees), worked out from the month and flipped south of the equator.
-- **The weather**, from the watch's own forecast: drifting cloud, fog, falling rain or snow over the scene (never indoors by the fire).
+- **The weather**, from the watch's own forecast: drifting cloud, fog, falling rain or snow over the scene (never indoors by the fire). On a windy day the clouds race.
+- **Sunrise and sunset:** a pink and amber glow rises from the horizon for twenty minutes either side.
+- **The night sky:** tonight's moon (the full moon a little larger), and shooting stars that come every few seconds on meteor-shower nights (mid-August, mid-December). Now and then a fox trots over the Shire's hills.
 - **Large stacked numerals** (Fraunces): the hours heavy, the minutes light; the date and the **Shire date** above (*Sat 31 · 10 Blotmath*) and the **hobbit mealtime** below (*Second breakfast*, *Afternoon tea*, … *The Shire sleeps*).
 - **Two complications**, either side of the time (battery and steps by default). Touch and hold the face → Customise to change them.
 - **Tap** the time for alarms, and the date or the mealtime for the Lembas app.
@@ -54,6 +56,9 @@ Four flat, colourful little scenes, drawn to match Lembas on the phone and the P
 - **Lembas** (in the app list), in the same type and colours as the face: the date, the Shire date, the time (hours heavy, minutes light) and the mealtime, then **Favourites**, **Lately** (your four latest apps) and **All apps** A–Z. Turn the crown to scroll; a letter shows where you are in the alphabet while you do. **Touch and hold** an app to pin it to Favourites or open its info. At the bottom: the **look** (tap a swatch: follow the sun, or one look) and **Watch face & updates**.
 - Settings → Buttons can open Lembas with a double press of the side button.
 - **The Lembas tile:** the Shire weekday and date, your next alarm if one is due within 12 hours (otherwise the mealtime), **when the look changes next** (*Starlit Night at 7:21 pm*), your favourites (then latest apps) and an **All apps** button.
+- **The Lembas day tile:** today's sun arc with the sun on it, sunrise and sunset, and when the look changes next.
+- **A tap on the wrist** (in the app, *Tap on the wrist*): a gentle double tap on the hour, or only at the hobbit mealtimes, never between 11pm and 7am. Off by default.
+- **In step with the phone:** the look chosen on the phone (or on Lembas for Windows, through the phone's sync) reaches the watch app, its tiles and complications over the watch link, and a look chosen on the watch goes back to the phone. The watch face keeps its own Look setting (touch and hold the face): watch faces can't read an app's settings, or the crown.
 - **Lembas complications for any watch face:** the **Shire date**, the **hobbit mealtime** and the **next Lembas look**. On another face: touch and hold → Edit → a complication → Lembas.
 - **Wear OS 6:** to colour the watch's own menus and tiles from the face, set the watch's theme (in its Settings) to **match the watch face**.
 
