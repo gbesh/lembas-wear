@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        pickFrom(intent)
+        if (intent.hasExtra("look")) { pickFrom(intent); recreate() }   // show the new look at once
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
