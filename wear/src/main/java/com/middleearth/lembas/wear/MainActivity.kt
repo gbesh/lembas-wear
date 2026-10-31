@@ -242,6 +242,12 @@ fun LembasApp() {
                             }
                         }
                         item {
+                            var chime by remember { mutableStateOf(Chime.mode(ctx)) }
+                            SettingButton(look, "Tap on the wrist", Chime.label(chime)) {
+                                chime = Chime.next(chime); Chime.setMode(ctx, chime)
+                            }
+                        }
+                        item {
                             SettingButton(look, "Watch face & updates", "Version ${WearUpdater.versionName(ctx)}") {
                                 WearUpdater.checkNow(ctx)
                             }

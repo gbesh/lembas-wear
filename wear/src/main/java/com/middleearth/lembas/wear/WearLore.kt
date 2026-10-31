@@ -32,11 +32,11 @@ class WearLook(
         const val AUTO = "auto"
 
         val SHIRE = WearLook("shire", "Shire Morning", R.drawable.wl_shire, 0xFF24452A,
-            0xFFFFCF5A, 0xFFF8F1DA, 0xFFB7D08F, 0xFFD9E4C2, 0xFF2F5A34)
+            0xFFFFCF5A, 0xFFF1EDE1, 0xFFB7D08F, 0xFFD9E4C2, 0xFF2F5A34)
         val REDBOOK = WearLook("redbook", "Red Book", R.drawable.wl_redbook, 0xFF6A1D16,
-            0xFFF7A23B, 0xFFFBEBD0, 0xFFF2B48A, 0xFFE6C2A8, 0xFF8A2A1A)
+            0xFFF7A23B, 0xFFF1E9DA, 0xFFF2B48A, 0xFFE6C2A8, 0xFF8A2A1A)
         val STARLIT = WearLook("starlit", "Starlit Night", R.drawable.wl_starlit, 0xFF151A40,
-            0xFFF6D27A, 0xFFF4EAD0, 0xFFB9AEE0, 0xFF9C93C8, 0xFF2B2560)
+            0xFFDAC696, 0xFFECE6D8, 0xFFB9AEE0, 0xFF9C93C8, 0xFF2B2560)
         val ELVEN = WearLook("elven", "Elven Silver", R.drawable.wl_elven, 0xFF0B2A31,
             0xFF7FC8CC, 0xFFE6F4F6, 0xFFB9DADB, 0xFF9FB5BA, 0xFF0F4A52)
 
@@ -49,11 +49,24 @@ object WearLooks {
     private const val PREFS = "lembas"
     const val PREF_LOOK = "look"
 
-    fun choice(ctx: Context): String =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PREF_LOOK, WearLook.AUTO) ?: WearLook.AUTO
+    const val PREF_KEEP_UNTIL = "keep_until"
 
-    fun setChoice(ctx: Context, id: String) =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(PREF_LOOK, id).apply()
+    /** The chosen look, or Follow the sun once a look kept "until the next change" (on the phone) has run out. */
+    fun choice(ctx: Context): String {
+        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val until = p.getLong(PREF_KEEP_UNTIL, 0)
+        if (until > 0 && System.currentTimeMillis() >= until) {
+            p.edit().putString(PREF_LOOK, WearLook.AUTO).remove(PREF_KEEP_UNTIL).apply()
+            return WearLook.AUTO
+        }
+        return p.getString(PREF_LOOK, WearLook.AUTO) ?: WearLook.AUTO
+    }
+
+    /** Chosen on the watch: kept until changed, and passed to the phone (and from there the PC). */
+    fun setChoice(ctx: Context, id: String) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(PREF_LOOK, id).remove(PREF_KEEP_UNTIL).apply()
+        LookLink.tellPhone(ctx, id)
+    }
 
     /** When the look next changes on its own, and to which (null if one look is kept). */
     fun next(ctx: Context, now: LocalDateTime = LocalDateTime.now()): Pair<WearLook, LocalDateTime>? {

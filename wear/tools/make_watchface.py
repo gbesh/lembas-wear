@@ -46,7 +46,7 @@ PARTS = {
     **{f"{k}-outline": (450, 450) for k in BACKS},
     "logs": (450, 450), "flame-outer": (120, 206), "flame-mid": (84, 130), "flame-inner": (40, 72),
     **{f"moon{i}": (64, 64) for i in range(8)}, "moonglow": (140, 140), "shooting": (100, 34),
-    "elven-star": (80, 80), "sunglow": (220, 220), "puff": (24, 24), "cloud": (150, 60), "fog": (600, 120),
+    "elven-star": (80, 80), "sunglow": (220, 220), "dawnglow": (450, 450), "fox": (60, 34), "puff": (24, 24), "cloud": (150, 60), "fog": (600, 120),
     **{f"rain{i}": (450, 450) for i in range(8)}, **{f"snow{i}": (450, 450) for i in range(8)},
 }
 
@@ -301,11 +301,11 @@ COMP_TEXT = "#FFF4F4F4"
 
 # Each look's type colours (hours, minutes, date line, mealtime) and the complication discs.
 STYLE = {
-    "shire": dict(layout="top", hours="#FF24452A", mins="#FF3F6B3A", lore="#FF55703F", meal="#FFF3E6BC", pill="#FF24452A",
+    "shire": dict(layout="top", hours="#FF24452A", mins="#FF3F6B3A", lore="#FF55703F", meal="#FFE7DFC8", pill="#FF24452A",
                   plate="#E624452A"),
-    "redbook": dict(layout="top", hours="#FFFBEBD0", mins="#FFF2B48A", lore="#FFF2B48A", meal="#FFFBEBD0", pill=None,
+    "redbook": dict(layout="top", hours="#FFF1E9DA", mins="#FFF2B48A", lore="#FFF2B48A", meal="#FFF1E9DA", pill=None,
                     plate="#40FBEBD0"),
-    "starlit": dict(layout="top", hours="#FFF6D27A", mins="#FFF4EAD0", lore="#FFB9AEE0", meal="#FFF6D27A", pill=None,
+    "starlit": dict(layout="top", hours="#FFDAC696", mins="#FFECE6D8", lore="#FFB9AEE0", meal="#FFDAC696", pill=None,
                     plate="#2EF4EAD0"),
     "elven": dict(layout="low", hours="#FFE6F4F6", mins="#FF7FC8CC", lore="#FF7FC8CC", meal="#FFC9D8DC", pill=None,
                   plate="#B305090B"),
@@ -413,8 +413,22 @@ def backdrop(look):
 
 def twinkles(seed, spots):
     rnd = random.Random(seed)
-    return "".join(dot(x, y, rnd.uniform(1.1, 1.8), "#FFF4F1E8", glide("alpha", f"40 + 215 * {wave(rnd.randint(4, 8), rnd.randint(0, 7))}", fps=8))
+    return "".join(dot(x, y, rnd.uniform(1.1, 1.8), "#FFF1F0EB", glide("alpha", f"40 + 215 * {wave(rnd.randint(4, 8), rnd.randint(0, 7))}", fps=8))
                    for x, y in spots)
+
+
+def dawn_dusk():
+    """For the twenty minutes either side of sunrise and sunset, a pink and amber wash from the horizon."""
+    near = f"min(abs({MINS} - {RISE}), abs({MINS} - {SET}))"
+    return image("dawnglow", 0, 0, S, S, glide("alpha", f"({KNOWN} && {near} < 20) ? 200 * (1 - {near} / 20) : 0", fps=4, dur=2))
+
+
+def fox():
+    """Now and then (for a minute, eight times a day) a fox trots across the Shire's hills."""
+    window = "fract([SECONDS_IN_DAY] / 10800) * 180"   # minutes into each three-hour stretch
+    p = f"(({window}) < 1 ? fract([SECONDS_IN_DAY] / 60) : 0)"
+    return image("fox", 0, 0, 60, 34, glide("x", f"-70 + 560 * {p}") + glide("y", f"350 - 26 * sin(3.14 * {p})")
+                 + glide("alpha", f"({window}) < 1 ? 255 : 0"))
 
 
 def shire_motion():
@@ -424,7 +438,7 @@ def shire_motion():
         p = phase(6, k * 2)
         out += image("puff", 0, 0, 24, 24, glide("x", f"346 + 22 * {p}") + glide("y", f"300 - 74 * {p}")
                      + glide("scaleX", f"0.5 + 0.9 * {p}") + glide("scaleY", f"0.5 + 0.9 * {p}") + glide("alpha", f"190 * {fade(p)}"))
-    return out
+    return out + fox()
 
 
 def redbook_motion():
@@ -445,7 +459,9 @@ def redbook_motion():
 def moon_phase():
     """Tonight's moon, in its real phase (mirrored for the southern hemisphere)."""
     idx = "(floor(([MOON_PHASE_POSITION] + 1.75) / 3.5) % 8)"
-    img = lambda i, flip: image(f"moon{i}", 118 - 32, 233 - 32, 64, 64, extra=' scaleX="-1"' if flip else "")
+    # the full moon a little larger
+    img = lambda i, flip: image(f"moon{i}", 118 - 32, 233 - 32, 64, 64, (tr("scaleX", "1.2") + tr("scaleY", "1.2")) if i == 4 else "",
+                                extra=' scaleX="-1"' if flip else "")
     def pick(flip):
         return condition([(f"m{i}{'s' if flip else 'n'}", f"{idx} == {i}", img(i, flip)) for i in range(1, 8)], img(0, flip))
     return condition([("south_moon", SOUTH, pick(True))], pick(False))
@@ -455,7 +471,10 @@ def starlit_motion():
     out = image("moonglow", 118 - 70, 233 - 70, 140, 140, glide("alpha", f"150 + 105 * {wave(8)}", fps=8))
     out += moon_phase()
     out += twinkles(7, [(40, 60), (150, 30), (300, 36), (420, 110), (24, 160), (402, 196), (180, 300), (270, 286)])
-    p = phase(29, 3)   # a shooting star now and then
+    # a shooting star now and then; every few seconds on meteor-shower nights (the Perseids in
+    # mid-August, the Geminids in mid-December)
+    meteors = "(([MONTH] == 8 && [DAY] >= 11 && [DAY] <= 13) || ([MONTH] == 12 && [DAY] >= 13 && [DAY] <= 15))"
+    p = f"({meteors} ? fract(([SECONDS_IN_DAY] + 3) / 7) : {phase(29, 3)})"
     out += image("shooting", 0, 0, 100, 34, glide("x", f"250 + 110 * {p}") + glide("y", f"18 + 34 * {p}")
                  + glide("alpha", f"(({p}) < 0.1) ? 255 * sin(31.4 * ({p})) : 0", fps=15))
     return out
@@ -483,7 +502,7 @@ def weather(look):
         return ""
     light = look == "shire"
     cloud_alpha = 235 if light else 120
-    clouds = "".join(image("cloud", 0, y, 150, 60, glide("x", f"-160 + 610 * {phase(dur, off)}") + tr("alpha", str(cloud_alpha))
+    clouds = "".join(image("cloud", 0, y, 150, 60, glide("x", f"-160 + 610 * ({WX} == 15 ? {phase(dur / 6, off)} : {phase(dur, off)})") + tr("alpha", str(cloud_alpha))
                                   + tr("scaleX", str(sc)) + tr("scaleY", str(sc)), extra='' if light else ' tintColor="#FF8A90B8"')
                      for y, dur, off, sc in ((14, 90, 0, 1.3), (52, 120, 50, 1.0), (300, 150, 100, 1.2)))
     fog = "".join(image("fog", 0, y, 600, 120, glide("x", f"-150 + 100 * {wave(60, off)}") + tr("alpha", "255"))
@@ -492,7 +511,7 @@ def weather(look):
                          f'<AnimationController play="ON_VISIBLE" repeat="TRUE" loopCount="0" resumePlayBack="TRUE" beforePlaying="FIRST_FRAME" afterPlaying="FIRST_FRAME"/>'
                          f'<SequenceImages loopCount="0" frameRate="10">' + "".join(f'<Image resource="{res_name(f"{kind}{i}")}"/>' for i in range(8))
                          + '</SequenceImages></PartAnimatedImage>')
-    cases = [(f"{look}_cloudy", WEATHER["cloudy"], clouds), (f"{look}_fog", WEATHER["fog"], fog),
+    cases = [(f"{look}_cloudy", f"{WEATHER['cloudy']} || {WX} == 15", clouds), (f"{look}_fog", WEATHER["fog"], fog),
              (f"{look}_rain", WEATHER["rain"], loop("rain")), (f"{look}_snow", WEATHER["snow"], loop("snow"))]
     return condition([(f"{look}_wx", "[WEATHER.IS_AVAILABLE]", condition(cases))])
 
@@ -515,7 +534,7 @@ def words(st, ambient=False):
 
 def look_group(look):
     st = STYLE[look]
-    scene = backdrop(look) + MOTION[look]() + weather(look)
+    scene = backdrop(look) + MOTION[look]() + weather(look) + (dawn_dusk() if look in ("shire", "starlit") else "")
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
     return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st))
                  + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>' + ambient(look), extra=' alpha="0"'))

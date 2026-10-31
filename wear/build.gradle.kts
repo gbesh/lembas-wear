@@ -61,4 +61,5 @@ dependencies {
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
     implementation("androidx.concurrent:concurrent-futures:1.2.0")
     implementation("androidx.wear.watchface:watchface-complications-data-source:1.2.1")
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")   // the look, in step with the phone
 }
