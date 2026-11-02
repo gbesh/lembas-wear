@@ -583,7 +583,9 @@ def look_link():
             f'supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">'
             f'<DefaultProviderPolicy primaryProvider="{LOOK_SOURCE}" primaryProviderType="SHORT_TEXT" '
             f'defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"/>'
-            f'<BoundingBox x="0" y="0" width="1" height="1"/>'
+            # the whole face: newer watches draw a complication only inside its bounds (a tap on the
+            # scene opens Lembas, as the date and the mealtime do)
+            f'<BoundingBox x="0" y="0" width="{S}" height="{S}"/>'
             f'<Complication type="SHORT_TEXT">{condition(cases)}</Complication>'
             f'<Complication type="EMPTY"/></ComplicationSlot>')
 

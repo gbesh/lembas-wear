@@ -86,7 +86,8 @@ class LookComplication : ComplicationDataSourceService() {
     private fun data(type: ComplicationType, look: String): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
         val text = PlainComplicationText.Builder(look).build()
-        return ShortTextComplicationData.Builder(text, PlainComplicationText.Builder("Lembas look").build()).build()
+        val tap = PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        return ShortTextComplicationData.Builder(text, PlainComplicationText.Builder("Lembas look").build()).setTapAction(tap).build()
     }
 
     companion object {
