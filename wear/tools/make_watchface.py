@@ -532,15 +532,12 @@ def words(st, ambient=False):
     return out
 
 
-def look_group(look, cover=False):
-    """[cover]: drawn over the follow-the-sun face (a look picked in the app), so its always-on
-    display blacks out the one underneath first."""
+def look_group(look):
     st = STYLE[look]
     scene = backdrop(look) + MOTION[look]() + weather(look) + (dawn_dusk() if look in ("shire", "starlit") else "")
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
     return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st))
                  + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>'
-                         + (f'<PartDraw x="0" y="0" width="{S}" height="{S}"><Ellipse x="0" y="0" width="{S}" height="{S}"><Fill color="#FF000000"/></Ellipse></PartDraw>' if cover else "")
                          + ambient(look), extra=' alpha="0"'))
 
 
@@ -576,9 +573,13 @@ LOOK_SOURCE = "com.middleearth.launcher/com.middleearth.lembas.wear.LookComplica
 def look_link():
     """The look chosen in the Lembas app (or on the phone or PC, through sync), read through a hidden
     complication from the Lembas watch app: watch faces can't read an app's settings, but they can
-    read its complications. "auto" (or no Lembas app) leaves the face following the sun underneath;
-    a chosen look is drawn over it."""
-    cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"', look_group(k, cover=True)) for k in ("shire", "redbook", "starlit", "elven")]
+    read its complications. Every scene is drawn here, inside the slot, so only one is ever drawn: the chosen
+    look, or for "auto" (or no Lembas app) the one that follows the sun."""
+    looks = ("shire", "redbook", "starlit", "elven")
+    chosen = " || ".join(f'[COMPLICATION.TEXT] == "{k}"' for k in looks)
+    # a look picked in the app, or (for "auto") the one for the time of day: four scenes in all
+    cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"' + (f' || (!({chosen}) && ({LOOK_EXPR[k]}))' if k in LOOK_EXPR else ""), look_group(k))
+             for k in looks]
     return (f'<ComplicationSlot slotId="9" name="look" displayName="Look" x="0" y="0" width="{S}" height="{S}" '
             f'supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">'
             f'<DefaultProviderPolicy primaryProvider="{LOOK_SOURCE}" primaryProviderType="SHORT_TEXT" '
@@ -586,20 +587,23 @@ def look_link():
             # the whole face: newer watches draw a complication only inside its bounds (a tap on the
             # scene opens Lembas, as the date and the mealtime do)
             f'<BoundingBox x="0" y="0" width="{S}" height="{S}"/>'
-            f'<Complication type="SHORT_TEXT">{condition(cases)}</Complication>'
-            f'<Complication type="EMPTY"/></ComplicationSlot>')
+            f'<Complication type="SHORT_TEXT">{condition(cases, default=look_group("starlit"))}</Complication>'
+            f'<Complication type="EMPTY">{auto_scene()}</Complication></ComplicationSlot>')
+
+
+def auto_scene():
+    """Follow the sun: the look for the time of day."""
+    auto_exprs = "".join(f'<Expression name="{k}"><![CDATA[{v}]]></Expression>' for k, v in LOOK_EXPR.items())
+    return group("auto", f'<Condition><Expressions>{auto_exprs}</Expressions>'
+            + "".join(f'<Compare expression="{k}">{look_group(k)}</Compare>' for k in LOOK_EXPR)
+            + f'<Default>{look_group("starlit")}</Default></Condition>')
 
 
 def watchface_xml():
-    auto_exprs = "".join(f'<Expression name="{k}"><![CDATA[{v}]]></Expression>' for k, v in LOOK_EXPR.items())
-    auto = (f'<Condition><Expressions>{auto_exprs}</Expressions>'
-            + "".join(f'<Compare expression="{k}">{look_group(k)}</Compare>' for k in LOOK_EXPR)
-            + f'<Default>{look_group("starlit")}</Default></Condition>')
     return ('<?xml version="1.0" encoding="utf-8"?>\n'
             f'<WatchFace width="{S}" height="{S}" clipShape="CIRCLE">'
             '<Metadata key="CLOCK_TYPE" value="DIGITAL"/><Metadata key="PREVIEW_TIME" value="10:08:32"/>'
             '<Scene backgroundColor="#FF000000">'
-            + group("auto", auto)
             + look_link()
             + "".join(complication(*c) for c in COMPS)
             + '</Scene></WatchFace>\n')
