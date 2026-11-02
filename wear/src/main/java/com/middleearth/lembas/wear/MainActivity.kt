@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        if (intent.hasExtra("look")) { pickFrom(intent); recreate() }   // show the new look at once
+        if (intent.hasExtra("look")) { setIntent(intent); pickFrom(intent); recreate() }   // show the new look at once
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
         WearUpdater.schedule(this)
         Chime.schedule(this)
         // "look" in the launch intent picks a look (the tests use it; so can a shortcut)
-        pickFrom(intent)
+        if (savedInstanceState == null) pickFrom(intent)   // not again when it's only recreated
         setContent { LembasApp() }
     }
 
