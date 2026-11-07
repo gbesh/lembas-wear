@@ -48,6 +48,7 @@ class PhoneLookListener : WearableListenerService() {
                 .putInt(Touches.PREF_WALK_NEXT_KM, m.getInt("walk_next_km", 0))
                 .putString(Touches.PREF_WALK_AT, m.getString("walk_at", ""))
                 .putInt(Touches.PREF_BEDTIME, m.getInt("bedtime", 23 * 60))
+                .putString("tengwar", m.getString("tengwar", "off"))
                 .putLong(Touches.PREF_FOCUS_END, m.getLong("focus_end", 0L)).apply()
             LembasTile.refresh(this)
             LookComplication.refresh(this)

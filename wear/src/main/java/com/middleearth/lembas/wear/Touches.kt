@@ -83,6 +83,9 @@ object Touches {
         else -> "Novaer" to "be well"
     }
 
+    /** The phone's Tengwar setting as the face's bits: 2048 the date, 4096 the time too. */
+    fun tengwarBits(ctx: Context): Int = when (prefs(ctx).getString("tengwar", "off")) { "date" -> 2048; "both" -> 2048 or 4096; else -> 0 }
+
     fun walkKm(ctx: Context) = prefs(ctx).getFloat(PREF_WALK_KM, -1f)
     fun walkNext(ctx: Context) = prefs(ctx).getString(PREF_WALK_NEXT, "") ?: ""
     fun walkNextKm(ctx: Context) = prefs(ctx).getInt(PREF_WALK_NEXT_KM, 0)

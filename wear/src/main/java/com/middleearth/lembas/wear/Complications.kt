@@ -104,8 +104,8 @@ class LookComplication : ComplicationDataSourceService() {
         val desc = PlainComplicationText.Builder("Lembas look").build()
         val tap = PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return when (type) {
-            // and 1024 under the night watch (from bedtime until five): the lamps go out and the face settles darker
-            ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder((WearLooks.sky(this) or (if (Touches.nightWatch(this)) 1024 else 0)).toFloat(), 0f, 2047f, desc)
+            // and 1024 under the night watch (from bedtime until five), 2048 for a Tengwar date, 4096 for Tengwar numerals
+            ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder((WearLooks.sky(this) or (if (Touches.nightWatch(this)) 1024 else 0) or Touches.tengwarBits(this)).toFloat(), 0f, 8191f, desc)
                 .setText(text).setTapAction(tap).build()
             ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(text, desc).setTapAction(tap).build()
             else -> null
