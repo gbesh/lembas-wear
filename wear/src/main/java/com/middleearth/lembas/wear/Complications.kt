@@ -65,6 +65,16 @@ class MealComplication : LembasComplication() {
 }
 
 /** "Starlit 7:21" (long: "Starlit Night at 7:21 pm"). */
+/** The next of Middle-earth's dates: "12d" over "Hobbit Day"; long: "Hobbit Day in 12 days". */
+class FeastComplication : LembasComplication() {
+    override fun words(now: LocalDateTime): Triple<String, String?, String> {
+        val (name, days) = Feasts.next(now.toLocalDate())
+        val short = if (days == 0) "today" else "${days}d"
+        val long = when (days) { 0 -> "$name today"; 1 -> "$name tomorrow"; else -> "$name in $days days" }
+        return Triple(short, name.substringBefore("’").substringBefore(" Day").take(10), long)
+    }
+}
+
 class NextLookComplication : LembasComplication() {
     override fun words(now: LocalDateTime): Triple<String, String?, String> {
         val (look, at) = WearLooks.next(this, now) ?: return WearLooks.current(this, now).let { Triple(it.title.split(' ')[0], null, it.title) }
@@ -79,7 +89,10 @@ class NextLookComplication : LembasComplication() {
  */
 class LookComplication : ComplicationDataSourceService() {
     override fun onComplicationRequest(request: ComplicationRequest, listener: ComplicationRequestListener) {
-        listener.onComplicationData(data(request.complicationType, WearLooks.choice(this)))
+        // Durin's Day: the Red Book returns in the evening (following the sun)
+        val c = WearLooks.choice(this)
+        val look = if (c == WearLook.AUTO && WearLooks.current(this).id == "redbook" && Feasts.durin(java.time.LocalDate.now())) "redbook" else c
+        listener.onComplicationData(data(request.complicationType, look))
     }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? = data(type, WearLook.AUTO)
@@ -91,7 +104,7 @@ class LookComplication : ComplicationDataSourceService() {
         val desc = PlainComplicationText.Builder("Lembas look").build()
         val tap = PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return when (type) {
-            ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(WearLooks.sky(this).toFloat(), 0f, 63f, desc)
+            ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(WearLooks.sky(this).toFloat(), 0f, 1023f, desc)
                 .setText(text).setTapAction(tap).build()
             ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(text, desc).setTapAction(tap).build()
             else -> null

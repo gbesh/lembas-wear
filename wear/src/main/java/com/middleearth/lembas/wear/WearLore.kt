@@ -115,7 +115,7 @@ object WearLooks {
         val m = now.hour * 60 + now.minute
         return when {
             m >= day.sunrise && m < day.evening -> WearLook.SHIRE
-            m >= day.evening && m < day.sunset -> if (Sun.autumn(now.toLocalDate())) WearLook.LORIEN else WearLook.REDBOOK
+            m >= day.evening && m < day.sunset -> if (Sun.autumn(now.toLocalDate()) && !Feasts.durin(now.toLocalDate())) WearLook.LORIEN else WearLook.REDBOOK
             m >= 23 * 60 || m < 2 * 60 -> WearLook.ELVEN
             m < day.sunrise -> WearLook.HAVENS
             else -> WearLook.STARLIT
@@ -241,5 +241,36 @@ object Sun {
         }.coerceAtMost(ha)
         return Day((noon - 4 * ha).toInt().coerceIn(0, 1439), noon.toInt().coerceIn(0, 1439),
             (noon + 4 * he).toInt().coerceIn(0, 1439), (noon + 4 * ha).toInt().coerceIn(0, 1439))
+    }
+}
+
+
+/** Middle-earth's dates (as on the phone): the Professor's birthday, Mid-year's Day, Hobbit Day, Durin's Day, Yule. */
+object Feasts {
+    /** Durin's Day: the last new moon of autumn for your hemisphere (new moons step 29.53 days from 6 Jan 2000). */
+    fun durinsDay(year: Int): LocalDate? {
+        val south = Sun.autumn(LocalDate.of(year, 4, 1))   // April is autumn in the south
+        val ref = 947182440000L; val syn = 29.530588853 * 86_400_000.0
+        val winter = LocalDate.of(year, if (south) 6 else 12, 1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        val k = kotlin.math.floor((winter - ref) / syn).toLong()
+        val nm = java.time.Instant.ofEpochMilli((ref + k * syn).toLong()).atZone(ZoneId.systemDefault()).toLocalDate()
+        return if (nm.monthValue >= (if (south) 3 else 9)) nm else null
+    }
+    fun durin(d: LocalDate) = durinsDay(d.year) == d
+
+    /** The next feast from [today] (today's counts): its name and the days to it. */
+    fun next(today: LocalDate): Pair<String, Int> {
+        val list = ArrayList<Pair<String, LocalDate>>()
+        for (y in today.year..today.year + 1) {
+            list.add("The Professor’s birthday" to LocalDate.of(y, 1, 3))
+            list.add("Hobbit Day" to LocalDate.of(y, 9, 22))
+            list.add("Yule" to LocalDate.of(y, 12, 21))
+            var d = LocalDate.of(y, 6, 15)
+            while (!Lore.shireDate(d).startsWith("Mid-year") && d.monthValue < 7) d = d.plusDays(1)
+            list.add("Mid-year’s Day" to d)
+            durinsDay(y)?.let { list.add("Durin’s Day" to it) }
+        }
+        val f = list.filter { !it.second.isBefore(today) }.minByOrNull { it.second }!!
+        return f.first to ChronoUnit.DAYS.between(today, f.second).toInt()
     }
 }

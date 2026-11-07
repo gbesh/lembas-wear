@@ -48,7 +48,7 @@ PARTS = {
     **{f"{k}-outline": (450, 450) for k in BACKS},
     "logs": (450, 450), "flame-outer": (120, 206), "flame-mid": (84, 130), "flame-inner": (40, 72),
     **{f"moon{i}": (64, 64) for i in range(8)}, "moonglow": (140, 140), "shooting": (100, 34),
-    "lamp": (32, 32), "leaf": (16, 8), "ship": (120, 110), "beacon": (60, 60), "rainbow": (450, 450), "frost": (450, 450),
+    "lamp": (32, 32), "leaf": (16, 8), "ship": (120, 110), "beacon": (60, 60), "rainbow": (450, 450), "frost": (450, 450), "burst": (90, 90), "burst2": (90, 90), "lanterns": (450, 70),
     "elven-star": (80, 80), "sunglow": (220, 220), "dawnglow": (450, 450), "fox": (60, 34), "puff": (24, 24), "cloud": (150, 60), "fog": (600, 120),
     **{f"rain{i}": (450, 450) for i in range(8)}, **{f"snow{i}": (450, 450) for i in range(8)},
 }
@@ -158,7 +158,8 @@ MONTHS = ["Afteryule", "Solmath", "Rethe", "Astron", "Thrimidge", "Forelithe",
           "Afterlithe", "Wedmath", "Halimath", "Winterfilth", "Blotmath", "Foreyule"]
 WD = chain([(f"[DAY_OF_WEEK] == {i + 1}", q(n)) for i, n in enumerate(WEEK[:-1])], q(WEEK[-1]))
 WD_UP = chain([(f"[DAY_OF_WEEK] == {i + 1}", q(n.upper())) for i, n in enumerate(WEEK[:-1])], q(WEEK[-1].upper()))
-MEAL = chain([(f"({H} == 5 || {H} == 6)", q("Kettle on")), (f"({H} == 7 || {H} == 8)", q("Breakfast")),
+MEAL = chain([(f"([MONTH] == 1 && [DAY] == 3 && {H} == 21)", q("A toast: the Professor")),   # the Tolkien Society's toast, 9pm on 3 January
+              (f"({H} == 5 || {H} == 6)", q("Kettle on")), (f"({H} == 7 || {H} == 8)", q("Breakfast")),
               (f"({H} == 9 || {H} == 10)", q("Second breakfast")), (f"{H} == 11", q("Elevenses")),
               (f"({H} == 12 || {H} == 13)", q("Luncheon")), (f"{H} == 14", q("A stroll in the garden")),
               (f"({H} == 15 || {H} == 16)", q("Afternoon tea")), (f"{H} == 17", q("A pint at the Dragon")),
@@ -577,11 +578,26 @@ def bit(k):
 BEACONS = {"shire": [(70, 292), (225, 286), (380, 292)], "starlit": [(150, 252), (330, 232)], "elven": [(70, 282), (380, 280)], "havens": [(60, 302), (340, 298)]}
 
 
+def feasts(look):
+    """Middle-earth's calendar from the phone: lanterns for Yule and Lithe (64), Hobbit Day's fireworks (128)."""
+    out = condition([(f"{look}_lanterns", bit(6), image("lanterns", 0, 22, S, 70, glide("alpha", f"190 + 65 * {wave(2.5)}", fps=8)))])
+    if look != "redbook":
+        rnd = random.Random(22)
+        bursts = ""
+        for k in range(3):
+            p = phase(2.6, k * 0.87)
+            x, y = rnd.uniform(110, 260), rnd.uniform(40, 120)
+            bursts += image("burst" if k % 2 == 0 else "burst2", x, y, 90, 90, glide("scaleX", f"0.2 + 1.0 * {p}") + glide("scaleY", f"0.2 + 1.0 * {p}")
+                            + glide("alpha", f"255 * (1 - {p})"), )
+        out += condition([(f"{look}_fireworks", bit(7), bursts)])
+    return out
+
+
 def sky_moods(look):
     """Over the scene, under the time: a rainbow, beacons, a haze of smoke, frost, a shimmer, lightning."""
     if look == "redbook":
-        return ""
-    out = ""
+        return feasts(look)
+    out = feasts(look)
     if look in ("shire", "lorien"):
         out += condition([(f"{look}_rainbow", bit(0), image("rainbow", 0, 0, S, S))])
     if look in BEACONS:
