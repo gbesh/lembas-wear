@@ -39,8 +39,12 @@ class WearLook(
             0xFFDAC696, 0xFFECE6D8, 0xFFB9AEE0, 0xFF9C93C8, 0xFF2B2560)
         val ELVEN = WearLook("elven", "Elven Silver", R.drawable.wl_elven, 0xFF0B2A31,
             0xFF7FC8CC, 0xFFE6F4F6, 0xFFB9DADB, 0xFF9FB5BA, 0xFF0F4A52)
+        val LORIEN = WearLook("lorien", "Lothlórien", R.drawable.wl_lorien, 0xFF2A2024,
+            0xFFF6D27A, 0xFFFFF6E0, 0xFFF2D27A, 0xFFE8C8A0, 0xFF5A4630)
+        val HAVENS = WearLook("havens", "The Grey Havens", R.drawable.wl_havens, 0xFF0E1424,
+            0xFFC9D4EA, 0xFFF2F4FA, 0xFFC9D4EA, 0xFF9AA8C0, 0xFF26324E)
 
-        val ALL = listOf(SHIRE, REDBOOK, STARLIT, ELVEN)
+        val ALL = listOf(SHIRE, REDBOOK, LORIEN, STARLIT, ELVEN, HAVENS)
         fun byId(id: String) = ALL.firstOrNull { it.id == id } ?: STARLIT
     }
 }
@@ -87,7 +91,8 @@ object WearLooks {
         return null
     }
 
-    /** Same schedule as the phone: sunrise→late afternoon Shire, late afternoon→sunset Red Book, 11pm→4am Elven, otherwise Starlit. */
+    /** Same schedule as the phone: sunrise→late afternoon Shire, late afternoon→sunset Red Book (Lothlórien in
+     *  autumn), sunset→11pm Starlit, 11pm→2am Elven, 2am→sunrise the Grey Havens. */
     fun current(ctx: Context, now: LocalDateTime = LocalDateTime.now()): WearLook {
         val c = choice(ctx)
         if (c != WearLook.AUTO) return WearLook.byId(c)
@@ -95,8 +100,9 @@ object WearLooks {
         val m = now.hour * 60 + now.minute
         return when {
             m >= day.sunrise && m < day.evening -> WearLook.SHIRE
-            m >= day.evening && m < day.sunset -> WearLook.REDBOOK
-            m >= 23 * 60 || m < 4 * 60 -> WearLook.ELVEN
+            m >= day.evening && m < day.sunset -> if (Sun.autumn(now.toLocalDate())) WearLook.LORIEN else WearLook.REDBOOK
+            m >= 23 * 60 || m < 2 * 60 -> WearLook.ELVEN
+            m < day.sunrise -> WearLook.HAVENS
             else -> WearLook.STARLIT
         }
     }
@@ -190,6 +196,12 @@ object Sun {
         "America/Lima" to (-12.05 to -77.04), "Pacific/Honolulu" to (21.31 to -157.86),
         "America/Anchorage" to (61.22 to -149.90),
     )
+
+    /** Autumn, by the month and the hemisphere (the same rule as the phone, the PC and the watch face). */
+    fun autumn(date: LocalDate, zone: ZoneId = ZoneId.systemDefault()): Boolean {
+        val south = (CITIES[zone.id]?.first ?: 0.0) < 0
+        return if (south) date.monthValue in 3..5 else date.monthValue in 9..11
+    }
 
     fun today(zone: ZoneId, date: LocalDate): Day {
         val offsetMin = zone.rules.getOffset(date.atStartOfDay(zone).plusHours(12).toInstant()).totalSeconds / 60.0

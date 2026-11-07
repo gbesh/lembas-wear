@@ -129,6 +129,64 @@ for (var m = 0; m < 8; m++) (function (m) { P['moon' + m] = function () { return
 P['moonglow'] = function () { return '<defs><radialGradient id="h"><stop offset="0" stop-color="#DAC696" stop-opacity=".35"/><stop offset="1" stop-color="#DAC696" stop-opacity="0"/></radialGradient></defs><circle cx="70" cy="70" r="70" fill="url(#h)"/>'; };  // 140
 P['shooting'] = function () { return '<defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF" stop-opacity="0"/><stop offset="1" stop-color="#FFF" stop-opacity=".95"/></linearGradient></defs><path d="M2,2 L96,30" stroke="url(#s)" stroke-width="2.4" stroke-linecap="round"/>'; };  // 100x34
 
+// ------------------------------------------------------------------ Lothlórien (the lamps and falling leaves move)
+var LORIEN = { spring: ['#E8C45A', '#F2D98A', '#C9A23A'], summer: ['#B9C46A', '#D9D08A', '#8FA64E'], autumn: ['#E9B23A', '#F6D06A', '#C98A2A'], winter: ['#E2B85A', '#F0D49A', '#B8913A'] };
+function lorien(season) {
+  var lf = LORIEN[season], s = '';
+  s += '<rect class="no" width="450" height="450" fill="' + vg('#1F2C47', '#E9A860') + '"/>';
+  s += '<rect class="no" width="450" height="450" fill="' + rg(225, 330, 300, '#FFE2A0', .55) + '"/>';
+  // far woods in the golden haze
+  var r = rng(21);
+  for (var i = 0; i < 9; i++) { var x = 10 + i * 52 + r() * 20, h = 120 + r() * 50, c = mix(lf[0], '#E9A860', .5);
+    s += '<path class="no" d="M' + f(x - 3) + ',360 L' + f(x - 1.5) + ',' + f(360 - h * .7) + ' L' + f(x + 1.5) + ',' + f(360 - h * .7) + ' L' + f(x + 3) + ',360Z" fill="' + mix('#B9A890', '#E9A860', .3) + '" opacity=".6"/>' +
+      '<ellipse class="no" cx="' + f(x) + '" cy="' + f(360 - h * .8) + '" rx="' + f(h * .14) + '" ry="' + f(h * .08) + '" fill="' + c + '" opacity=".55"/>'; }
+  s += '<rect class="no" x="0" y="300" width="450" height="80" fill="' + vg('#F3C67A', '#F3C67A') + '" opacity=".25"/>';
+  // the ground of fallen gold
+  s += '<path d="' + wave(372, 6, 0.02, 2) + '" fill="' + vg(mix(lf[0], '#FFFFFF', .1), mix(lf[2], '#3A2A18', .4)) + '"/>';
+  r = rng(22);
+  for (i = 0; i < 40; i++) s += '<ellipse class="no" cx="' + f(r() * 450) + '" cy="' + f(380 + r() * 70) + '" rx="' + f(3 + r() * 2) + '" ry="1.6" fill="' + lf[i % 3] + '"/>';
+  // two great mallorns at the edges, silver columns with a white flet each
+  [-1, 1].forEach(function (side) {
+    var x = 225 + side * 150, g = 'b' + (gid++);
+    DEFS += '<linearGradient id="' + g + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9DA9AC"/><stop offset=".4" stop-color="#E9EEEC"/><stop offset="1" stop-color="#7E8A8E"/></linearGradient>';
+    s += '<path d="M' + (x - 34) + ',470 C' + (x - 18) + ',440 ' + (x - 14) + ',410 ' + (x - 13) + ',380 L' + (x - 10) + ',-10 L' + (x + 10) + ',-10 L' + (x + 13) + ',380 C' + (x + 14) + ',410 ' + (x + 18) + ',440 ' + (x + 34) + ',470Z" fill="url(#' + g + ')"/>';
+    s += '<path class="no" d="M' + (x - 34) + ',250 L' + (x + 34) + ',250 L' + (x + 30) + ',255 L' + (x - 30) + ',255Z" fill="#F2EEE2"/>';
+    // a golden crown hanging in from the edge
+    var cx = x + side * 40, c = 'k' + (gid++);
+    DEFS += '<linearGradient id="' + c + '" gradientUnits="userSpaceOnUse" x1="0" y1="80" x2="0" y2="170"><stop offset="0" stop-color="' + mix(lf[1], '#FFFFFF', .25) + '"/><stop offset=".6" stop-color="' + lf[0] + '"/><stop offset="1" stop-color="' + mix(lf[2], '#3A2A18', .35) + '"/></linearGradient>';
+    s += '<g fill="url(#' + c + ')"><ellipse cx="' + cx + '" cy="140" rx="70" ry="24"/><ellipse cx="' + (cx - side * 40) + '" cy="124" rx="30" ry="20"/><ellipse cx="' + cx + '" cy="112" rx="34" ry="24"/><ellipse cx="' + (cx + side * 30) + '" cy="120" rx="28" ry="20"/></g>';
+  });
+  return s + grain(.8);
+}
+P['lamp'] = function () { return '<defs><radialGradient id="h"><stop offset="0" stop-color="#FFE7A8" stop-opacity=".7"/><stop offset="1" stop-color="#FFE7A8" stop-opacity="0"/></radialGradient></defs><circle cx="16" cy="16" r="16" fill="url(#h)"/><circle cx="16" cy="16" r="3" fill="#FFF0C4"/>'; };  // 32
+P['leaf'] = function () { return '<ellipse cx="8" cy="4" rx="7" ry="3.4" fill="#EBB83E"/>'; };  // 16x8
+
+// ------------------------------------------------------------------ The Grey Havens (the ship, the moon and the tower's lamp move)
+function havens(season) {
+  var s = '<rect class="no" width="450" height="450" fill="' + vg('#0A0F1E', '#5A6A86') + '"/>';
+  var r = rng(31);
+  for (var i = 0; i < 60; i++) s += '<circle class="no" cx="' + f(r() * 450) + '" cy="' + f(r() * 260) + '" r="' + f(.6 + r() * 1.1) + '" fill="#F2F2EE" opacity="' + f(.3 + r() * .6) + '"/>';
+  s += '<path d="' + peaks(330, [[0, 318], [60, 300], [130, 312], [200, 290], [270, 308], [340, 296], [455, 314]]) + '" fill="' + vg('#3E4C6E', '#26304A') + '"/>';
+  s += '<rect class="no" x="0" y="300" width="450" height="32" fill="' + vg('#8A9AB8', '#8A9AB8') + '" opacity=".14"/>';
+  s += '<rect x="0" y="330" width="450" height="130" fill="' + vg('#6E7E9A', '#0E1528') + '"/>';
+  // the moon's road on the water
+  r = rng(32);
+  for (i = 0; i < 18; i++) { var t = r(), y = 336 + t * 100, w = 6 + (1 - t) * 26; s += '<rect class="no" x="' + f(118 - w / 2 + (r() - .5) * (16 + t * 60)) + '" y="' + f(y) + '" width="' + f(w) + '" height="1.6" fill="#E6ECF8" opacity="' + f(.25 + (1 - t) * .4) + '"/>'; }
+  // the headland and its white tower
+  s += '<path d="M460,460 L460,250 C430,256 400,272 380,300 C366,318 356,330 350,350 L350,460Z" fill="' + vg('#4A5470', '#1A2134') + '"/>';
+  s += '<path d="M396,262 L399,200 L413,200 L416,262Z" fill="' + vg('#F2F2EE', '#A9B0C0') + '"/><path d="M398,200 h16 v-6 h-16z" fill="#C9CED8"/><path d="M401,194 h10 v-12 h-10z" fill="#FFF2D0"/><path d="M399,182 L406,172 L413,182Z" fill="#A9B0C0"/>';
+  // the quay along the near shore
+  s += '<path d="M-5,460 L-5,410 L230,410 L250,426 L250,460Z" fill="' + vg('#7A8298', '#2A3046') + '"/>';
+  if (season === 'winter') s += '<path class="no" d="M-5,410 L230,410 l4,3 L-5,413Z" fill="#F2F4FA"/>';
+  return s + grain(.6);
+}
+P['ship'] = function () {   // 120x110: the white ship, its sails and its stern lamp
+  return '<defs><linearGradient id="sl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F6F6F2"/><stop offset="1" stop-color="#C9CED8"/></linearGradient></defs>' +
+    '<g transform="translate(52,96) scale(.4)"><path d="M-120,0 C-90,26 80,26 120,0 L118,8 C80,32 -90,32 -118,8Z" fill="#B9C0CE"/><path d="M-120,0 C-90,26 80,26 120,0 C124,-10 132,-30 150,-44 C140,-28 136,-14 134,0 Z M150,-44 C158,-50 166,-46 164,-38 C160,-40 156,-40 150,-44Z" fill="#F2F2EE"/>' +
+    '<path d="M-6,-6 V-190" stroke="#D8DCE4" stroke-width="6"/><path d="M-2,-186 C60,-150 74,-80 64,-18 L-2,-18Z" fill="url(#sl)"/><path d="M-10,-170 C-60,-130 -70,-70 -62,-20 L-10,-20Z" fill="url(#sl)" opacity=".9"/><circle cx="-112" cy="-8" r="7" fill="#FFF2D0"/></g>';
+};
+P['beacon'] = function () { return '<defs><radialGradient id="h"><stop offset="0" stop-color="#FFF2D0" stop-opacity=".75"/><stop offset="1" stop-color="#FFF2D0" stop-opacity="0"/></radialGradient></defs><circle cx="30" cy="30" r="30" fill="url(#h)"/>'; };  // 60
+
 // ------------------------------------------------------------------ Elven Silver
 var ELVEN = {
   spring: ['#9CCFB4', '#D7EBC8', '#F2D6E0', '#BFE3D0'],
@@ -153,9 +211,9 @@ function elven(season) {
     s += '<path d="M' + (bx - side * 34) + ',474 Q' + (bx - side * 10) + ',464 ' + (bx - side * 7) + ',420 L' + (bx + side * 13) + ',420 Q' + (bx + side * 16) + ',462 ' + (bx + side * 38) + ',474Z" fill="' + bark + '"/>';
     s += '<path class="no" d="M' + (bx + side * 4) + ',466 C' + (bx + side * 2) + ',380 ' + (tx + side * 16) + ',262 ' + (tx + side * 4) + ',176" stroke="#8FA6AD" stroke-width="2" fill="none" opacity=".6"/>';
     s += '<path d="M' + (tx + side * 10) + ',300 q' + side * 18 + ',-8 ' + side * 30 + ',-34" stroke="#C9D8DC" stroke-width="5" fill="none" stroke-linecap="round"/>';
-    var tiers = season === 'winter' ? [[140, 58, 14, 1], [108, 44, 13, 3]] : [[146, 62, 16, 0], [116, 50, 15, 1], [88, 36, 13, 2]];
+    var tiers = season === 'winter' ? [[140, 44, 14, 1], [112, 34, 13, 3]] : [[146, 46, 15, 0], [118, 38, 14, 1], [92, 28, 12, 2]];
     tiers.forEach(function (t, k) {
-      var cy = t[0], half = t[1], th = t[2], c = col[t[3] % 4], cx = tx + side * 30, g = 'x' + (gid++);
+      var cy = t[0], half = t[1], th = t[2], c = col[t[3] % 4], cx = tx + side * 40, g = 'x' + (gid++);   // clear of the date line
       DEFS += '<linearGradient id="' + g + '" gradientUnits="userSpaceOnUse" x1="0" y1="' + (cy - th * 2.2) + '" x2="0" y2="' + (cy + th) + '"><stop offset="0" stop-color="' + mix(c, '#FFFFFF', .3) + '"/><stop offset=".55" stop-color="' + c + '"/><stop offset="1" stop-color="' + mix(c, '#0E1A20', .45) + '"/></linearGradient>';
       var lobes = '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + half + '" ry="' + th + '"/>';
       for (var j = 0; j < 5; j++) { var fx = j / 4 * 2 - 1; lobes += '<ellipse cx="' + f(cx + fx * half * .74) + '" cy="' + f(cy - th * (.55 + (1 - Math.abs(fx)) * .55)) + '" rx="' + f(half * (.3 + (1 - Math.abs(fx)) * .1)) + '" ry="' + f(th * (.9 + (1 - Math.abs(fx)) * .3)) + '"/>'; }
@@ -199,6 +257,8 @@ for (var k = 0; k < 8; k++) (function (k) { P['rain' + k] = function () { return
   P['shire-' + season] = function () { return shire(season); };
   P['starlit-' + season] = function () { return starlit(season); };
   P['elven-' + season] = function () { return elven(season); };
+  P['lorien-' + season] = function () { return lorien(season); };
+  P['havens-' + season] = function () { return havens(season); };
 });
 P['redbook'] = redbook;
 P['redbook-outline-fire'] = function () { return '<path d="M225,250 C285,320 300,360 270,420 C255,450 195,450 180,420 C150,360 170,320 225,250Z"/>'; };

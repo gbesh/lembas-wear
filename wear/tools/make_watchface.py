@@ -39,6 +39,8 @@ BACKS = {   # look -> the picture for each season (the fire is the same all year
     "redbook": {se: "redbook" for se in SEASONS},
     "starlit": {se: "starlit-winter" if se == "winter" else "starlit-summer" for se in SEASONS},
     "elven": {se: f"elven-{se}" for se in SEASONS},
+    "lorien": {se: f"lorien-{se}" for se in SEASONS},
+    "havens": {se: "havens-winter" if se == "winter" else "havens-summer" for se in SEASONS},
 }
 ALL_BACKS = {b for look in BACKS.values() for b in look.values()}
 PARTS = {
@@ -46,6 +48,7 @@ PARTS = {
     **{f"{k}-outline": (450, 450) for k in BACKS},
     "logs": (450, 450), "flame-outer": (120, 206), "flame-mid": (84, 130), "flame-inner": (40, 72),
     **{f"moon{i}": (64, 64) for i in range(8)}, "moonglow": (140, 140), "shooting": (100, 34),
+    "lamp": (32, 32), "leaf": (16, 8), "ship": (120, 110), "beacon": (60, 60),
     "elven-star": (80, 80), "sunglow": (220, 220), "dawnglow": (450, 450), "fox": (60, 34), "puff": (24, 24), "cloud": (150, 60), "fog": (600, 120),
     **{f"rain{i}": (450, 450) for i in range(8)}, **{f"snow{i}": (450, 450) for i in range(8)},
 }
@@ -277,12 +280,22 @@ MINS = "([HOUR_0_23] * 60 + [MINUTE])"
 WEATHER_DAY = "([WEATHER.IS_AVAILABLE] ? ([WEATHER.IS_DAY] ? 1 : 0) : (([HOUR_0_23] >= 6 && [HOUR_0_23] < 18) ? 1 : 0))"
 WEATHER_EVENING = "1020"   # 5pm
 IS_DAY = f"({KNOWN} ? (({MINS} >= {RISE} && {MINS} < {SET}) ? 1 : 0) : {WEATHER_DAY})"
+# Seasons by the month, flipped south of the equator (from the time zone's main city).
+NORTH_SEASON = "(([MONTH] == 12 || [MONTH] <= 2) ? 3 : (([MONTH] <= 5) ? 0 : (([MONTH] <= 8) ? 1 : 2)))"
+SOUTH = f"({KNOWN} && {LAT} < 0)"
+SEASON = f"({SOUTH} ? (({NORTH_SEASON} + 2) % 4) : {NORTH_SEASON})"
+AUTUMN = f"({SEASON} == 2)"
+
 # The phone's schedule, in the same order: sunrise to late afternoon Shire, late afternoon to
-# sunset Red Book, 11pm to 4am Elven, otherwise Starlit.
+# sunset Red Book (Lothlórien in autumn), sunset to 11pm Starlit, 11pm to 2am Elven, 2am to
+# sunrise the Grey Havens.
+EVENING_NOW = f"({KNOWN} ? ({MINS} >= {EVENING} && {MINS} < {SET}) : ({WEATHER_DAY} == 1 && {MINS} >= {WEATHER_EVENING}))"
 LOOK_EXPR = {
     "shire": f"({KNOWN} ? ({MINS} >= {RISE} && {MINS} < {EVENING}) : ({WEATHER_DAY} == 1 && {MINS} < {WEATHER_EVENING}))",
-    "redbook": f"({KNOWN} ? ({MINS} >= {EVENING} && {MINS} < {SET}) : ({WEATHER_DAY} == 1 && {MINS} >= {WEATHER_EVENING}))",
-    "elven": f"({MINS} >= 1380 || {MINS} < 240)",
+    "redbook": f"({EVENING_NOW} && !{AUTUMN})",
+    "lorien": f"({EVENING_NOW} && {AUTUMN})",
+    "elven": f"({MINS} >= 1380 || {MINS} < 120)",
+    "havens": f"({MINS} >= 120 && ({KNOWN} ? ({MINS} < {RISE}) : ({WEATHER_DAY} == 0 && {MINS} < 720)))",
 }
 
 
@@ -309,13 +322,12 @@ STYLE = {
                     plate="#2EF4EAD0"),
     "elven": dict(layout="low", hours="#FFE6F4F6", mins="#FF7FC8CC", lore="#FF7FC8CC", meal="#FFC9D8DC", pill=None,
                   plate="#B305090B"),
+    "lorien": dict(layout="top", hours="#FFFFF6E0", mins="#FFF6D27A", lore="#FFF6D27A", meal="#FFFFF0C4", pill=None,
+                   plate="#8C2A1E14"),
+    "havens": dict(layout="top", hours="#FFF2F4FA", mins="#FFC9D4EA", lore="#FFC9D4EA", meal="#FFE2E8F4", pill=None,
+                   plate="#8C0E1424"),
 }
 AMBIENT = dict(hours="#FFB0B0B0", mins="#FFB0B0B0", lore="#FF8A8A8A", meal="#FF8A8A8A")
-
-# Seasons by the month, flipped south of the equator (from the time zone's main city).
-NORTH_SEASON = "(([MONTH] == 12 || [MONTH] <= 2) ? 3 : (([MONTH] <= 5) ? 0 : (([MONTH] <= 8) ? 1 : 2)))"
-SOUTH = f"({KNOWN} && {LAT} < 0)"
-SEASON = f"({SOUTH} ? (({NORTH_SEASON} + 2) % 4) : {NORTH_SEASON})"
 
 # The watch's own weather (Wear OS 5): its conditions folded into the few the scenes draw.
 WX = "[WEATHER.CONDITION]"
@@ -493,7 +505,32 @@ def elven_motion():
     return out
 
 
-MOTION = {"shire": shire_motion, "redbook": redbook_motion, "starlit": starlit_motion, "elven": elven_motion}
+def lorien_motion():
+    out = ""
+    for k, (x, y) in enumerate([(75, 244), (375, 244), (130, 300), (320, 290), (225, 330)]):   # lamps on the flets and in the woods
+        out += image("lamp", x - 16, y - 16, 32, 32, glide("alpha", f"140 + 115 * {wave(3 + k % 3, k)}", fps=8))
+    rnd = random.Random(12)
+    for k in range(6):   # leaves drifting down, turning
+        p = phase(rnd.uniform(9, 14), rnd.uniform(0, 12))
+        x0 = rnd.uniform(60, 390)
+        out += image("leaf", 0, 0, 16, 8, glide("x", f"{x0:.0f} + 30 * sin(6.28 * 1.5 * {p})") + glide("y", f"40 + 400 * {p}")
+                     + glide("angle", f"540 * {p}") + glide("alpha", f"230 * {fade(p)}"))
+    return out
+
+
+def havens_motion():
+    out = image("moonglow", 118 - 70, 233 - 70, 140, 140, glide("alpha", f"150 + 105 * {wave(8)}", fps=8))
+    out += moon_phase()
+    out += twinkles(11, [(60, 40), (170, 24), (300, 40), (400, 96), (30, 150), (250, 120), (190, 200)])
+    out += image("beacon", 406 - 30, 188 - 30, 60, 60, glide("alpha", f"150 + 105 * {wave(4.5)}", fps=8))
+    # the white ship riding the swell
+    out += image("ship", 170, 300, 120, 110, glide("angle", f"1.4 * sin(6.28 * {phase(8)})", fps=10)
+                 + glide("y", f"300 + 2.5 * sin(6.28 * {phase(8, 2)})", fps=10), px=0.45, py=0.9)
+    return out
+
+
+MOTION = {"shire": shire_motion, "redbook": redbook_motion, "starlit": starlit_motion, "elven": elven_motion,
+          "lorien": lorien_motion, "havens": havens_motion}
 
 
 def weather(look):
@@ -574,8 +611,8 @@ def look_link():
     """The look chosen in the Lembas app (or on the phone or PC, through sync), read through a hidden
     complication from the Lembas watch app: watch faces can't read an app's settings, but they can
     read its complications. Every scene is drawn here, inside the slot, so only one is ever drawn: the chosen
-    look, or for "auto" (or no Lembas app) the one that follows the sun."""
-    looks = ("shire", "redbook", "starlit", "elven")
+    look, or for "auto" the one that follows the sun (Starlit Night until the Lembas app answers)."""
+    looks = ("shire", "redbook", "lorien", "starlit", "elven", "havens")
     chosen = " || ".join(f'[COMPLICATION.TEXT] == "{k}"' for k in looks)
     # a look picked in the app, or (for "auto") the one for the time of day: four scenes in all
     cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"' + (f' || (!({chosen}) && ({LOOK_EXPR[k]}))' if k in LOOK_EXPR else ""), look_group(k))
@@ -588,15 +625,7 @@ def look_link():
             # scene opens Lembas, as the date and the mealtime do)
             f'<BoundingBox x="0" y="0" width="{S}" height="{S}"/>'
             f'<Complication type="SHORT_TEXT">{condition(cases, default=look_group("starlit"))}</Complication>'
-            f'<Complication type="EMPTY">{auto_scene()}</Complication></ComplicationSlot>')
-
-
-def auto_scene():
-    """Follow the sun: the look for the time of day."""
-    auto_exprs = "".join(f'<Expression name="{k}"><![CDATA[{v}]]></Expression>' for k, v in LOOK_EXPR.items())
-    return group("auto", f'<Condition><Expressions>{auto_exprs}</Expressions>'
-            + "".join(f'<Compare expression="{k}">{look_group(k)}</Compare>' for k in LOOK_EXPR)
-            + f'<Default>{look_group("starlit")}</Default></Condition>')
+            f'<Complication type="EMPTY">{look_group("starlit")}</Complication></ComplicationSlot>')
 
 
 def watchface_xml():
@@ -615,6 +644,8 @@ SAMPLE = {   # look: (hours, minutes, date line, meal, complications)
     "redbook": ("03", "30", "Sat 31  ·  10 Blotmath", "Afternoon tea", ("64%", "9,870")),
     "starlit": ("08", "05", "Sat 31  ·  10 Blotmath", "Supper", ("41%", "11,204")),
     "elven": ("01", "30", "Sat 31  ·  10 Blotmath", "The Shire sleeps", ("23%", "12,640")),
+    "lorien": ("05", "40", "Sat 31  ·  10 Blotmath", "Dinner", ("58%", "10,402")),
+    "havens": ("04", "12", "Sat 31  ·  10 Blotmath", "The Shire sleeps", ("19%", "12,980")),
 }
 
 
@@ -643,6 +674,11 @@ def still(look, with_words=True, ambient_mode=False, season="summer"):
             put("moonglow", 118 - 70, 233 - 70); put("moon2", 118 - 32, 233 - 32)
         if look == "elven":
             put("elven-star", 225 - 40, 50 - 40)
+        if look == "lorien":
+            for x, y in [(75, 244), (375, 244), (130, 300), (320, 290), (225, 330)]:
+                put("lamp", x - 16, y - 16)
+        if look == "havens":
+            put("moonglow", 118 - 70, 233 - 70); put("moon3", 118 - 32, 233 - 32); put("beacon", 406 - 30, 188 - 30); put("ship", 170, 300)
     if not with_words:
         return img
     dr = ImageDraw.Draw(img)
@@ -693,7 +729,7 @@ def write_stills(wear_res):
         p.mkdir(parents=True, exist_ok=True)
         rows = [[still(k) for k in STYLE], [still(k, ambient_mode=True) for k in STYLE],
                 [still("shire", season=se) for se in SEASONS], [still("elven", season=se) for se in SEASONS]]
-        sheet = Image.new("RGB", (S * 4 + 35, S * 4 + 35), (40, 40, 40))
+        sheet = Image.new("RGB", (S * 6 + 49, S * 4 + 35), (40, 40, 40))
         for r, row in enumerate(rows):
             for i, im in enumerate(row):
                 sheet.paste(im.convert("RGB"), (7 + i * (S + 7), 7 + r * (S + 7)))
