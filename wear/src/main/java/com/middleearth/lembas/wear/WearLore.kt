@@ -54,6 +54,21 @@ object WearLooks {
     const val PREF_LOOK = "look"
 
     const val PREF_KEEP_UNTIL = "keep_until"
+    const val PREF_SKY = "sky"
+    const val PREF_SKY_AT = "sky_at"
+    const val PREF_FORECAST = "forecast"
+
+    /** The sky's moods from the phone (see LookComplication), forgotten after three hours without news. */
+    fun sky(ctx: Context): Int {
+        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (System.currentTimeMillis() - p.getLong(PREF_SKY_AT, 0) < 3 * 60 * 60_000L) p.getInt(PREF_SKY, 0) else 0
+    }
+
+    /** Today's weather in a line of hobbit talk, from the phone ("" if none lately). */
+    fun forecast(ctx: Context): String {
+        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (System.currentTimeMillis() - p.getLong(PREF_SKY_AT, 0) < 3 * 60 * 60_000L) p.getString(PREF_FORECAST, "") ?: "" else ""
+    }
 
     /** The chosen look, or Follow the sun once a look kept "until the next change" (on the phone) has run out. */
     fun choice(ctx: Context): String {

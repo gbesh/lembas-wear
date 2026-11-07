@@ -48,7 +48,7 @@ PARTS = {
     **{f"{k}-outline": (450, 450) for k in BACKS},
     "logs": (450, 450), "flame-outer": (120, 206), "flame-mid": (84, 130), "flame-inner": (40, 72),
     **{f"moon{i}": (64, 64) for i in range(8)}, "moonglow": (140, 140), "shooting": (100, 34),
-    "lamp": (32, 32), "leaf": (16, 8), "ship": (120, 110), "beacon": (60, 60),
+    "lamp": (32, 32), "leaf": (16, 8), "ship": (120, 110), "beacon": (60, 60), "rainbow": (450, 450), "frost": (450, 450),
     "elven-star": (80, 80), "sunglow": (220, 220), "dawnglow": (450, 450), "fox": (60, 34), "puff": (24, 24), "cloud": (150, 60), "fog": (600, 120),
     **{f"rain{i}": (450, 450) for i in range(8)}, **{f"snow{i}": (450, 450) for i in range(8)},
 }
@@ -569,9 +569,42 @@ def words(st, ambient=False):
     return out
 
 
-def look_group(look):
+# The sky's moods from the phone, carried as the look complication's value (1 rainbow, 2 beacons, 4 smoke,
+# 8 frost, 16 heat, 32 storm); the storm also from the watch's own weather.
+SKY = "[COMPLICATION.RANGED_VALUE_VALUE]"
+def bit(k):
+    return f"(floor({SKY} / {2 ** k}) % 2 == 1)"
+BEACONS = {"shire": [(70, 292), (225, 286), (380, 292)], "starlit": [(150, 252), (330, 232)], "elven": [(70, 282), (380, 280)], "havens": [(60, 302), (340, 298)]}
+
+
+def sky_moods(look):
+    """Over the scene, under the time: a rainbow, beacons, a haze of smoke, frost, a shimmer, lightning."""
+    if look == "redbook":
+        return ""
+    out = ""
+    if look in ("shire", "lorien"):
+        out += condition([(f"{look}_rainbow", bit(0), image("rainbow", 0, 0, S, S))])
+    if look in BEACONS:
+        fires = "".join(image("beacon", x - 30, y - 38, 60, 60, glide("alpha", f"150 + 105 * {wave(0.7, k * 0.3)}", fps=12))
+                        + dot(x, y - 6, 3.2, "#FFFFD27A") for k, (x, y) in enumerate(BEACONS[look]))
+        out += condition([(f"{look}_beacons", bit(1), fires)])
+    warm = look in ("shire", "lorien")
+    out += condition([(f"{look}_smoke", bit(2), f'<PartDraw x="0" y="0" width="{S}" height="{S}"><Rectangle x="0" y="0" width="{S}" height="{S}">'
+                                                  f'<Fill color="{"#3CC0905A" if warm else "#406A5040"}"/></Rectangle></PartDraw>')])
+    out += condition([(f"{look}_frost", bit(3), image("frost", 0, 0, S, S))])
+    shimmer = "".join(f'<PartDraw x="-40" y="{280 + k * 16}" width="{S + 80}" height="8" pivotX="0.5" pivotY="0.5">'
+                      + glide("x", f"-40 + 14 * sin(6.28 * {phase(6 + k, k)})", fps=12)
+                      + f'<Rectangle x="0" y="2" width="{S + 80}" height="4"><Fill color="#16FFF6E0"/></Rectangle></PartDraw>' for k in range(3))
+    out += condition([(f"{look}_heat", bit(4), shimmer)])
+    flash = (f'<PartDraw x="0" y="0" width="{S}" height="{S}">' + glide("alpha", f"(fract([SECONDS_IN_DAY] / 9) < 0.04) ? 70 : 0", fps=15)
+             + f'<Rectangle x="0" y="0" width="{S}" height="{S}"><Fill color="#FFF4F2FF"/></Rectangle></PartDraw>')
+    out += condition([(f"{look}_storm", f"{bit(5)} || ([WEATHER.IS_AVAILABLE] && {WX} == 9)", flash)])
+    return out
+
+
+def look_group(look, sky=True):
     st = STYLE[look]
-    scene = backdrop(look) + MOTION[look]() + weather(look) + (dawn_dusk() if look in ("shire", "starlit") else "")
+    scene = backdrop(look) + MOTION[look]() + weather(look) + (dawn_dusk() if look in ("shire", "starlit") else "") + (sky_moods(look) if sky else "")
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
     return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st))
                  + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>'
@@ -618,14 +651,14 @@ def look_link():
     cases = [(f"pick_{k}", f'[COMPLICATION.TEXT] == "{k}"' + (f' || (!({chosen}) && ({LOOK_EXPR[k]}))' if k in LOOK_EXPR else ""), look_group(k))
              for k in looks]
     return (f'<ComplicationSlot slotId="9" name="look" displayName="Look" x="0" y="0" width="{S}" height="{S}" '
-            f'supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">'
-            f'<DefaultProviderPolicy primaryProvider="{LOOK_SOURCE}" primaryProviderType="SHORT_TEXT" '
+            f'supportedTypes="RANGED_VALUE EMPTY" isCustomizable="FALSE">'
+            f'<DefaultProviderPolicy primaryProvider="{LOOK_SOURCE}" primaryProviderType="RANGED_VALUE" '
             f'defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"/>'
             # the whole face: newer watches draw a complication only inside its bounds (a tap on the
             # scene opens Lembas, as the date and the mealtime do)
             f'<BoundingBox x="0" y="0" width="{S}" height="{S}"/>'
-            f'<Complication type="SHORT_TEXT">{condition(cases, default=look_group("starlit"))}</Complication>'
-            f'<Complication type="EMPTY">{look_group("starlit")}</Complication></ComplicationSlot>')
+            f'<Complication type="RANGED_VALUE">{condition(cases, default=look_group("starlit"))}</Complication>'
+            f'<Complication type="EMPTY">{look_group("starlit", sky=False)}</Complication></ComplicationSlot>')
 
 
 def watchface_xml():

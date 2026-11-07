@@ -237,6 +237,16 @@ P['fox'] = function () {   // 60x34: a fox trotting over the Shire's hills, now 
     '<path d="M14,22 l-2,10 M22,24 l1,9 M38,23 l-1,9 M45,22 l2,9" stroke="#8A3E1A" stroke-width="2.4" stroke-linecap="round"/></g>' +
     '<path d="M4,24 C0,20 2,14 8,18" fill="#F4EFE4"/>';
 };
+P['rainbow'] = function () {   // 450: a faint bow behind the hills, after rain
+  var col = ['#E8574A', '#F29A3A', '#F6D35A', '#7CC26A', '#5AA8D8', '#6A6CC8', '#9A6AC0'], s = '';
+  col.forEach(function (c, i) { s += '<circle cx="225" cy="400" r="' + (230 - i * 9) + '" fill="none" stroke="' + c + '" stroke-width="9" opacity=".26"/>'; });
+  return '<defs><clipPath id="up"><rect width="450" height="330"/></clipPath></defs><g clip-path="url(#up)">' + s + '</g>';
+};
+P['frost'] = function () {   // 450: frost on a cold morning: a pale wash on the ground and glints
+  var r = rng(51), s = '<defs><linearGradient id="fr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8F2FF" stop-opacity="0"/><stop offset="1" stop-color="#E8F2FF" stop-opacity=".38"/></linearGradient></defs><rect y="300" width="450" height="150" fill="url(#fr)"/>';
+  for (var i = 0; i < 40; i++) s += '<circle cx="' + f(r() * 450) + '" cy="' + f(320 + r() * 130) + '" r="' + f(.8 + r() * 1.2) + '" fill="#FFFFFF" opacity="' + f(.4 + r() * .5) + '"/>';
+  return s;
+};
 P['puff'] = function () { return '<circle cx="12" cy="12" r="11" fill="#FFFFFF"/>'; };   // 24
 P['cloud'] = function () { return '<g fill="#FFFFFF"><rect x="10" y="30" width="130" height="26" rx="13"/><circle cx="52" cy="32" r="22"/><circle cx="88" cy="24" r="26"/><circle cx="118" cy="38" r="16"/></g>'; };  // 150x60
 P['fog'] = function () { return '<defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E6EEF0" stop-opacity="0"/><stop offset=".5" stop-color="#E6EEF0" stop-opacity=".42"/><stop offset="1" stop-color="#E6EEF0" stop-opacity="0"/></linearGradient></defs><rect width="600" height="120" fill="url(#f)"/>'; };  // 600x120

@@ -39,7 +39,9 @@ class PhoneLookListener : WearableListenerService() {
             val look = m.getString("look") ?: continue
             getSharedPreferences("lembas", MODE_PRIVATE).edit()
                 .putString(WearLooks.PREF_LOOK, if (look == "adaptive") WearLook.AUTO else look)
-                .putLong(WearLooks.PREF_KEEP_UNTIL, m.getLong("keepUntil", 0)).apply()
+                .putLong(WearLooks.PREF_KEEP_UNTIL, m.getLong("keepUntil", 0))
+                .putInt(WearLooks.PREF_SKY, m.getInt("sky", 0)).putLong(WearLooks.PREF_SKY_AT, System.currentTimeMillis())
+                .putString(WearLooks.PREF_FORECAST, m.getString("forecast", "")).apply()
             LembasTile.refresh(this)
             LookComplication.refresh(this)
         }

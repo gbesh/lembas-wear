@@ -7,6 +7,7 @@ import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.LongTextComplicationData
 import androidx.wear.watchface.complications.data.PlainComplicationText
+import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceService
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
@@ -83,11 +84,18 @@ class LookComplication : ComplicationDataSourceService() {
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? = data(type, WearLook.AUTO)
 
+    /** The look as text; as a ranged value, the sky's moods from the phone too (bits: 1 rainbow, 2 beacons,
+     *  4 smoke, 8 frost, 16 heat, 32 storm), so the face can draw them between the scene and the time. */
     private fun data(type: ComplicationType, look: String): ComplicationData? {
-        if (type != ComplicationType.SHORT_TEXT) return null
         val text = PlainComplicationText.Builder(look).build()
+        val desc = PlainComplicationText.Builder("Lembas look").build()
         val tap = PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        return ShortTextComplicationData.Builder(text, PlainComplicationText.Builder("Lembas look").build()).setTapAction(tap).build()
+        return when (type) {
+            ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(WearLooks.sky(this).toFloat(), 0f, 63f, desc)
+                .setText(text).setTapAction(tap).build()
+            ComplicationType.SHORT_TEXT -> ShortTextComplicationData.Builder(text, desc).setTapAction(tap).build()
+            else -> null
+        }
     }
 
     companion object {
