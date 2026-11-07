@@ -102,6 +102,33 @@ def make_static_fonts():
         instantiateVariableFont(f, axes, inplace=True, updateFontNames=False)
         freeze(f, ("lnum", "pnum"))
         f.save(fonts / f"{name}.ttf")
+    make_tengwar_font(fonts)
+
+
+def make_tengwar_font(fonts):
+    """Alcarin Tengwar (Open Font License), just the Tengwar, with Tengwar numerals on the digits 0-9 so the
+    face's own [DAY], hours and minutes come out in Tengwar."""
+    from fontTools.ttLib import TTFont
+    from fontTools import subset
+    src = fonts / "alcarin_tengwar.otf"
+    if not src.exists():
+        return
+    f = TTFont(src)
+    for t in f["cmap"].tables:
+        if t.isUnicode():
+            for d in range(10):
+                g = t.cmap.get(0xE070 + d)
+                if g:
+                    t.cmap[0x30 + d] = g
+    opts = subset.Options()
+    opts.layout_features = ["*"]
+    opts.notdef_outline = True
+    opts.hinting = False
+    sub = subset.Subsetter(opts)
+    sub.populate(unicodes=[0x20, 0xA0] + list(range(0x30, 0x3A)) + list(range(0xE000, 0xE100)))
+    sub.subset(f)
+    f.save(fonts / "tengwar.otf")
+    src.unlink()   # only the cut goes in the face
 
 
 def freeze(f, features):
@@ -158,6 +185,10 @@ MONTHS = ["Afteryule", "Solmath", "Rethe", "Astron", "Thrimidge", "Forelithe",
           "Afterlithe", "Wedmath", "Halimath", "Winterfilth", "Blotmath", "Foreyule"]
 WD = chain([(f"[DAY_OF_WEEK] == {i + 1}", q(n)) for i, n in enumerate(WEEK[:-1])], q(WEEK[-1]))
 WD_UP = chain([(f"[DAY_OF_WEEK] == {i + 1}", q(n.upper())) for i, n in enumerate(WEEK[:-1])], q(WEEK[-1].upper()))
+import tengwar as _tw
+ENGLISH_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+WD_TENGWAR = chain([(f"[DAY_OF_WEEK] == {i + 1}", q(_tw.text(n))) for i, n in enumerate(ENGLISH_WEEK[:-1])], q(_tw.text(ENGLISH_WEEK[-1])))
+TENGWAR_FONT = True   # set False by main() when the Tengwar font isn't there
 MEAL = chain([(f"([MONTH] == 1 && [DAY] == 3 && {H} == 21)", q("A toast: the Professor")),   # the Tolkien Society's toast, 9pm on 3 January
               (f"({H} == 5 || {H} == 6)", q("Kettle on")), (f"({H} == 7 || {H} == 8)", q("Breakfast")),
               (f"({H} == 9 || {H} == 10)", q("Second breakfast")), (f"{H} == 11", q("Elevenses")),
@@ -457,7 +488,7 @@ def shire_motion():
 def redbook_motion():
     out = ""
     for name, x, y, w, h, dur in (("flame-outer", 165, 244, 120, 206, 2.6), ("flame-mid", 183, 314, 84, 130, 1.9), ("flame-inner", 205, 364, 40, 72, 1.3)):
-        out += image(name, x, y, w, h, glide("scaleY", f"0.9 + 0.16 * {wave(dur)}", fps=12, interp="EASE_IN_OUT")
+        out += image(name, x, y, w, h, glide("scaleY", f"(0.9 + 0.16 * {wave(dur)}) * (0.55 + 0.45 * {OIL})", fps=12, interp="EASE_IN_OUT")
                      + glide("scaleX", f"1.04 - 0.08 * {wave(dur, dur / 3)}", fps=12, interp="EASE_IN_OUT"), px=0.5, py=1.0)
     out += image("logs", 0, 0, S, S)
     rnd = random.Random(5)
@@ -502,14 +533,14 @@ def elven_motion():
         p = phase(rnd.uniform(9, 15), rnd.uniform(0, 14))
         x0 = rnd.uniform(120, 330)
         out += dot(0, 0, rnd.uniform(1.6, 2.4), "#FFDCEBF0", glide("x", f"{x0:.0f} + 12 * sin(6.28 * {p})") + glide("y", f"430 - 130 * {p}")
-                   + glide("alpha", f"200 * {fade(p)}"))
+                   + glide("alpha", f"200 * {fade(p)} * {lamps_lit()}"))
     return out
 
 
 def lorien_motion():
     out = ""
     for k, (x, y) in enumerate([(75, 244), (375, 244), (130, 300), (320, 290), (225, 330)]):   # lamps on the flets and in the woods
-        out += image("lamp", x - 16, y - 16, 32, 32, glide("alpha", f"140 + 115 * {wave(3 + k % 3, k)}", fps=8))
+        out += image("lamp", x - 16, y - 16, 32, 32, glide("alpha", f"(140 + 115 * {wave(3 + k % 3, k)}) * {OIL} * {lamps_lit()}", fps=8))
     rnd = random.Random(12)
     for k in range(6):   # leaves drifting down, turning
         p = phase(rnd.uniform(9, 14), rnd.uniform(0, 12))
@@ -523,7 +554,7 @@ def havens_motion():
     out = image("moonglow", 118 - 70, 233 - 70, 140, 140, glide("alpha", f"150 + 105 * {wave(8)}", fps=8))
     out += moon_phase()
     out += twinkles(11, [(60, 40), (170, 24), (300, 40), (400, 96), (30, 150), (250, 120), (190, 200)])
-    out += image("beacon", 406 - 30, 188 - 30, 60, 60, glide("alpha", f"150 + 105 * {wave(4.5)}", fps=8))
+    out += image("beacon", 406 - 30, 188 - 30, 60, 60, glide("alpha", f"(150 + 105 * {wave(4.5)}) * {OIL}", fps=8))
     # the white ship riding the swell
     out += image("ship", 170, 300, 120, 110, glide("angle", f"1.4 * sin(6.28 * {phase(8)})", fps=10)
                  + glide("y", f"300 + 2.5 * sin(6.28 * {phase(8, 2)})", fps=10), px=0.45, py=0.9)
@@ -558,10 +589,18 @@ def words(st, ambient=False):
     """Tap the date for the calendar, the time for alarms, the Shire date or mealtime for Lembas."""
     lay = LAYOUT[st["layout"]] if not ambient else LAYOUT["top"]
     tap = (lambda t: None) if ambient else (lambda t: t)
-    out = text(lay["date"], "alegreya_sans", 20, st["lore"], "%s %s  ·  %s %s",
-               ["[DAY_OF_WEEK_S]", "[DAY]", SHIRE_DAY, shire_name()], spacing=0.02, launch=tap(APP))
-    out += text(lay["hours"], "numerals_light" if ambient else "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z], launch=tap("ALARM"))
-    out += text(lay["mins"], "numerals_light", NUM_SIZE, st["mins"], "%s", ["[MINUTE_Z]"], launch=tap("ALARM"))
+    date = text(lay["date"], "alegreya_sans", 20, st["lore"], "%s %s  ·  %s %s",
+                ["[DAY_OF_WEEK_S]", "[DAY]", SHIRE_DAY, shire_name()], spacing=0.02, launch=tap(APP))
+    hours = text(lay["hours"], "numerals_light" if ambient else "numerals_heavy", NUM_SIZE, st["hours"], "%s", [HOUR_Z], launch=tap("ALARM"))
+    mins = text(lay["mins"], "numerals_light", NUM_SIZE, st["mins"], "%s", ["[MINUTE_Z]"], launch=tap("ALARM"))
+    if ambient or not TENGWAR_FONT:
+        out = date + hours + mins
+    else:   # in Tengwar, when chosen on the phone: the weekday and day, and the numerals
+        tdate = text(lay["date"], "tengwar", 24, st["lore"], "%s %s", [WD_TENGWAR, "[DAY]"], launch=tap(APP))
+        thours = text(lay["hours"], "tengwar", int(NUM_SIZE * .82), st["hours"], "%s", [HOUR_Z], launch=tap("ALARM"))
+        tmins = text(lay["mins"], "tengwar", int(NUM_SIZE * .82), st["mins"], "%s", ["[MINUTE_Z]"], launch=tap("ALARM"))
+        tag = st["layout"] + st["hours"][3:]
+        out = condition([(f"tw_d_{tag}", TENGWAR_DATE, tdate)], date) + condition([(f"tw_t_{tag}", TENGWAR_TIME, thours + tmins)], hours + mins)
     if not ambient:
         x, y, w, h = lay["meal"]
         if st.get("pill"):
@@ -575,6 +614,15 @@ def words(st, ambient=False):
 SKY = "[COMPLICATION.RANGED_VALUE_VALUE]"
 def bit(k):
     return f"(floor({SKY} / {2 ** k}) % 2 == 1)"
+# Lamp oil: the watch's battery. Full above 30%, lower beneath it, guttering below 15%; full again on the charger.
+OIL = ("([BATTERY_CHARGING_STATUS] ? 1 : (clamp(0.32 + 0.68 * [BATTERY_PERCENT] / 30, 0.32, 1)"
+       " * (([BATTERY_PERCENT] < 15 && fract([SECONDS_IN_DAY] / 2.3) < 0.14) ? 0.5 : 1)))")
+# The night watch (1024): from bedtime (set on the phone) the lamps go out and the face settles darker.
+def lamps_lit():
+    return f"({bit(10)} ? 0.1 : 1)"
+# Tengwar (from the phone's setting): 2048 the date, 4096 the time.
+TENGWAR_DATE = bit(11)
+TENGWAR_TIME = bit(12)
 BEACONS = {"shire": [(70, 292), (225, 286), (380, 292)], "starlit": [(150, 252), (330, 232)], "elven": [(70, 282), (380, 280)], "havens": [(60, 302), (340, 298)]}
 
 
@@ -621,6 +669,9 @@ def sky_moods(look):
 def look_group(look, sky=True):
     st = STYLE[look]
     scene = backdrop(look) + MOTION[look]() + weather(look) + (dawn_dusk() if look in ("shire", "starlit") else "") + (sky_moods(look) if sky else "")
+    if sky:   # the night watch: darker and calmer after bedtime
+        scene += condition([(f"{look}_watch", bit(10), f'<PartDraw x="0" y="0" width="{S}" height="{S}"><Rectangle x="0" y="0" width="{S}" height="{S}">'
+                                                         f'<Fill color="#6603050E"/></Rectangle></PartDraw>')])
     scene += "".join(disc(x + COMP_D / 2, y + COMP_D / 2, COMP_D, st["plate"]) for _, x, y, _, _ in COMPS)
     return group(look, group(f"{look}-scene", AMBIENT_OFF + scene) + group(f"{look}-text", AMBIENT_OFF + words(st))
                  + group(f"{look}-ambient", f'<Variant mode="AMBIENT" target="alpha" value="255"/>'
@@ -786,8 +837,10 @@ def write_stills(wear_res):
 
 
 async def main():
+    global TENGWAR_FONT
     await render()
     make_static_fonts()
+    TENGWAR_FONT = (RES / "font" / "tengwar.otf").exists()
     if len(ARGS) > 1:   # the watch app uses the same type as the face
         import shutil
         app_fonts = Path(ARGS[1]) / "font"

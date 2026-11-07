@@ -52,6 +52,9 @@ jobs:
             cp fonts/Fraunces-Italic.ttf $d/fraunces_italic.ttf
             cp fonts/AlegreyaSans-Medium.ttf $d/alegreya_sans.ttf
           done
+          # Alcarin Tengwar (Open Font License) for the Tengwar date and numerals; the face generator
+          # cuts it down to the Tengwar and puts the Tengwar numerals on the digits
+          curl -fsSL -o watchface/src/main/res/font/alcarin_tengwar.otf "https://raw.githubusercontent.com/Tosche/Alcarin-Tengwar/main/Fonts%20Static/AlcarinTengwar-Regular.otf"
 
       - name: Watch face artwork and XML
         run: |

@@ -94,8 +94,7 @@
                 <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
             </intent-filter>
             <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="RANGED_VALUE,SHORT_TEXT" />
-            <!-- every quarter hour as well, so the calendar (Durin's Day, the feasts) and the sky reach the face on time -->
-            <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="900" />
+            <!-- every five minutes as well, so the calendar (Durin's Day, the feasts), the sky and the night watch reach the face on time -->
             <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
             <meta-data android:name="android.support.wearable.complications.SAFE_WATCH_FACES" android:value="com.middleearth.launcher.watchface" />
             <meta-data android:name="android.support.wearable.complications.SAFE_WATCH_FACE_SUPPORTED_TYPES" android:value="SHORT_TEXT" />
@@ -152,6 +151,72 @@
             </intent-filter>
             <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT,LONG_TEXT" />
             <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
+        </service>
+
+        <!-- The Horn of Gondor, the Phial of Galadriel and smoke-ring focus: tiles, and what they open -->
+        <activity android:name=".HornActivity" android:exported="false" android:taskAffinity="" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+        <activity android:name=".PhialActivity" android:exported="false" android:taskAffinity="" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+        <activity android:name=".FocusActivity" android:exported="false" android:taskAffinity="" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+        <service
+            android:name=".HornTile"
+            android:exported="true"
+            android:label="Horn of Gondor"
+            android:description="@string/app_name"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/tile_preview" />
+        </service>
+        <service
+            android:name=".PhialTile"
+            android:exported="true"
+            android:label="Phial of Galadriel"
+            android:description="@string/app_name"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/tile_preview" />
+        </service>
+        <service
+            android:name=".FocusTile"
+            android:exported="true"
+            android:label="Smoke-ring focus"
+            android:description="@string/app_name"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/tile_preview" />
+        </service>
+        <!-- The walk to Mount Doom, and the hobbit forecast, for any watch face -->
+        <service
+            android:name=".JourneyComplication"
+            android:exported="true"
+            android:label="The walk to Mount Doom"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="RANGED_VALUE,SHORT_TEXT,LONG_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="1800" />
+        </service>
+        <service
+            android:name=".ForecastComplication"
+            android:exported="true"
+            android:label="Hobbit forecast"
+            android:icon="@drawable/ic_launcher_foreground"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="LONG_TEXT,SHORT_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="1800" />
         </service>
 
         <service

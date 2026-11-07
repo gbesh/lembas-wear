@@ -41,9 +41,17 @@ class PhoneLookListener : WearableListenerService() {
                 .putString(WearLooks.PREF_LOOK, if (look == "adaptive") WearLook.AUTO else look)
                 .putLong(WearLooks.PREF_KEEP_UNTIL, m.getLong("keepUntil", 0))
                 .putInt(WearLooks.PREF_SKY, m.getInt("sky", 0)).putLong(WearLooks.PREF_SKY_AT, System.currentTimeMillis())
-                .putString(WearLooks.PREF_FORECAST, m.getString("forecast", "")).apply()
+                .putString(WearLooks.PREF_FORECAST, m.getString("forecast", ""))
+                // the walk, the night watch's bedtime, and a focus running on the phone
+                .putFloat(Touches.PREF_WALK_KM, m.getFloat("walk_km", -1f))
+                .putString(Touches.PREF_WALK_NEXT, m.getString("walk_next", ""))
+                .putInt(Touches.PREF_WALK_NEXT_KM, m.getInt("walk_next_km", 0))
+                .putString(Touches.PREF_WALK_AT, m.getString("walk_at", ""))
+                .putInt(Touches.PREF_BEDTIME, m.getInt("bedtime", 23 * 60))
+                .putLong(Touches.PREF_FOCUS_END, m.getLong("focus_end", 0L)).apply()
             LembasTile.refresh(this)
             LookComplication.refresh(this)
+            Touches.refreshAll(this)
         }
     }
 }

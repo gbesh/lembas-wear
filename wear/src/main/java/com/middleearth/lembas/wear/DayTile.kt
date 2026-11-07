@@ -24,7 +24,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Your day at a glance: today's sun arc with the sun on it, sunrise and sunset, and the next look. */
+/** Your day at a glance: a Sindarin greeting, today's sun arc with the sun on it, sunrise and sunset, and the next look. */
 class DayTile : TileService() {
     private fun hm(m: Int): String = java.time.LocalTime.of((m / 60).coerceIn(0, 23), m % 60)
         .format(DateTimeFormatter.ofPattern(if (android.text.format.DateFormat.is24HourFormat(this)) "H:mm" else "h:mm a"))
@@ -58,6 +58,7 @@ class DayTile : TileService() {
             val look = WearLooks.current(this, now)
             val day = Sun.today(ZoneId.systemDefault(), now.toLocalDate())
             val col = LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
+                .addContent(Touches.greeting(now.toLocalTime()).let { (el, en) -> text("$el · $en", 13f, look.soft, italic = true) })
                 .addContent(text(Lore.shireDate(now.toLocalDate()), 14f, look.lore, italic = true))
                 .addContent(LayoutElementBuilders.Image.Builder().setResourceId("arc").setWidth(dp(150f)).setHeight(dp(70f)).build())
                 .addContent(text("Sunrise ${hm(day.sunrise)} · Sunset ${hm(day.sunset)}", 13f, look.text))
