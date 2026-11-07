@@ -34,55 +34,90 @@ var SHIRE = {
   autumn: { sky: '#E6D9C2', sun: '#FFB45A', h1: '#D9B76E', h2: '#C08C45', h3: '#8E7A3A', h4: '#6E5A2E', door: '#2F6B42', dots: ['#C8573A', '#E0883A', '#B5452A'] },
   winter: { sky: '#E3E9EE', sun: '#FFE7A6', h1: '#F6F8FA', h2: '#E4EBF0', h3: '#CFD9E0', h4: '#B7C4CC', door: '#2F6B42', dots: ['#FFFFFF', '#FFFFFF', '#C8573A'] },
 };
+function hex(c) { return [1, 3, 5].map(function (i) { return parseInt(c.slice(i, i + 2), 16); }); }
+function mix(a, b, t) { var A = hex(a), B = hex(b); return '#' + A.map(function (v, i) { return Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0'); }).join(''); }
+var gid = 0, DEFS = '';
+function vg(top, bottom) { var id = 'v' + (gid++); DEFS += '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + top + '"/><stop offset="1" stop-color="' + bottom + '"/></linearGradient>'; return 'url(#' + id + ')'; }
+function rg(cx, cy, r, color, o) { var id = 'r' + (gid++); DEFS += '<radialGradient id="' + id + '" gradientUnits="userSpaceOnUse" cx="' + cx + '" cy="' + cy + '" r="' + r + '"><stop offset="0" stop-color="' + color + '" stop-opacity="' + o + '"/><stop offset="1" stop-color="' + color + '" stop-opacity="0"/></radialGradient>'; return 'url(#' + id + ')'; }
+var GRAIN = '<filter id="grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .45  0 0 0 0 .35  0 0 0 .08 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>';
+function grain(o) { DEFS += GRAIN; return '<rect class="no" width="450" height="450" fill="#fff" filter="url(#grain)" opacity="' + o + '"/>'; }
 function shire(season) {
   var c = SHIRE[season], s = '';
-  s += '<rect class="no" width="450" height="450" fill="' + c.sky + '"/>';
+  s += '<rect class="no" width="450" height="450" fill="' + vg(mix(c.sky, '#BFE0E0', .45), c.sky) + '"/>';
+  s += '<rect class="no" width="450" height="450" fill="' + rg(96, 300, 330, '#FFF1CC', .7) + '"/>';
   s += '<circle class="no" cx="96" cy="300" r="120" fill="' + c.sun + '" opacity=".22"/><circle cx="96" cy="300" r="74" fill="' + c.sun + '"/>';
-  s += '<path d="' + wave(300, 10, 0.018, 1) + '" fill="' + c.h1 + '"/>';
-  s += '<path d="' + wave(330, 12, 0.022, 3) + '" fill="' + c.h2 + '"/>';
-  s += '<path d="M140,460 C170,360 260,330 340,334 C400,338 440,360 460,380 L460,460Z" fill="' + c.h3 + '"/>';
-  // the round green door, with its brass knob, and a round window
-  s += '<circle cx="300" cy="392" r="30" fill="#CEBA93"/><circle cx="300" cy="392" r="24" fill="' + c.door + '"/><circle class="no" cx="300" cy="392" r="3.5" fill="#FFCF5A"/>';
+  var rim = rg(96, 300, 420, '#FFFBEA', .8);
+  var far = wave(286, 7, 0.026, 5);
+  s += '<path class="no" d="' + far + '" fill="' + vg(mix(c.h1, '#BFE0E0', .5), mix(c.h1, '#BFE0E0', .3)) + '"/>';
+  s += '<path d="' + wave(300, 10, 0.018, 1) + '" fill="' + vg(mix(c.h1, '#FFFFFF', .15), c.h1) + '"/><path class="no" d="' + wave(300, 10, 0.018, 1) + '" fill="none" stroke="' + rim + '" stroke-width="1.6"/>';
+  s += '<path d="' + wave(330, 12, 0.022, 3) + '" fill="' + vg(mix(c.h2, '#FFFFFF', .1), mix(c.h2, c.h3, .5)) + '"/><path class="no" d="' + wave(330, 12, 0.022, 3) + '" fill="none" stroke="' + rim + '" stroke-width="1.6"/>';
+  var hillA = 'M140,460 C170,360 260,330 340,334 C400,338 440,360 460,380 L460,460Z';
+  s += '<path d="' + hillA + '" fill="' + vg(mix(c.h3, '#FFFFFF', .1), mix(c.h3, c.h4, .6)) + '"/><path class="no" d="' + hillA + '" fill="none" stroke="' + rim + '" stroke-width="1.6"/>';
+  // the round green door in its stone ring, with a brass knob, a round window and a lantern
+  DEFS += '<radialGradient id="door" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#3E8657"/><stop offset="1" stop-color="#22522F"/></radialGradient>';
+  s += '<ellipse class="no" cx="300" cy="422" rx="26" ry="4" fill="#B5A688"/>';
+  s += '<circle cx="300" cy="392" r="30" fill="#CEBA93"/><circle class="no" cx="300" cy="392" r="30" fill="none" stroke="#B5A688" stroke-width="2" stroke-dasharray="7 3"/><circle cx="300" cy="392" r="24" fill="url(#door)"/><circle class="no" cx="300" cy="392" r="3.5" fill="#FFCF5A"/>';
   s += '<circle cx="246" cy="384" r="11" fill="#CEBA93"/><circle class="no" cx="246" cy="384" r="7.5" fill="#FFF3C9"/>';
+  s += '<circle class="no" cx="342" cy="372" r="16" fill="' + rg(342, 372, 16, '#FFE6A8', .7) + '"/><rect class="no" x="338" y="368" width="8" height="9" rx="1.5" fill="#FFE2A0" stroke="#4A3A28" stroke-width="1"/>';
   // the chimney the smoke rises from
-  s += '<rect x="352" y="318" width="12" height="24" rx="2" fill="#8A6A48"/>';
-  s += '<path d="M-10,460 C40,400 120,388 200,410 L200,460Z" fill="' + c.h4 + '"/>';
+  s += '<rect x="352" y="318" width="12" height="24" rx="2" fill="' + vg('#9A7A55', '#6A5038') + '"/>';
+  // a little fence along the hill
+  var fence = '<path d="M372,402 L440,390 M372,410 L440,398" stroke="#8C6F4C" stroke-width="2"/>';
+  for (var k = 0; k <= 5; k++) { var fx = 372 + k * 13.6, fy = 418 - k * 2.4; fence += '<path d="M' + f(fx - 1.6) + ',' + f(fy) + ' V' + f(fy - 20) + ' l1.6,-3 l1.6,3 V' + f(fy) + 'Z" fill="#9A7B55"/>'; }
+  s += '<g class="no">' + fence + '</g>';
+  var front = 'M-10,460 C40,400 120,388 200,410 L200,460Z';
+  s += '<path d="' + front + '" fill="' + vg(mix(c.h4, '#FFFFFF', .08), mix(c.h4, '#1E3A22', .3)) + '"/>';
   var r = rng(4), d = c.dots;
   for (var i = 0; i < (season === 'summer' ? 3 : 16); i++) {
     var x = season === 'summer' ? [70, 96, 356][i] : 20 + r() * 420, y = season === 'summer' ? [420, 430, 430][i] : 350 + r() * 90;
     s += '<circle class="no" cx="' + f(x) + '" cy="' + f(y) + '" r="' + f(2.5 + r() * 1.5) + '" fill="' + d[i % 3] + '"/>';
   }
   if (season === 'winter') s += '<path class="no" d="M290,362 q10,-6 20,0 q6,4 12,0" stroke="#FFFFFF" stroke-width="5" fill="none" stroke-linecap="round"/>';
-  return s;
+  return s + grain(.9);
 }
 
 // ------------------------------------------------------------------ Red Book (by the fire; the flames are separate, they move)
 function redbook() {
-  var s = '<rect class="no" width="450" height="450" fill="#6A1D16"/>';
-  s += '<circle cx="225" cy="470" r="230" fill="#8A2A1A"/><circle class="no" cx="225" cy="470" r="170" fill="#B23A1E"/>';
-  return s;
+  var s = '<rect class="no" width="450" height="450" fill="' + vg('#3A100C', '#6A1D16') + '"/>';
+  // the hearth's stone arch around the fire
+  var st = '';
+  for (var k = 0; k < 11; k++) { var a0 = Math.PI + k / 11 * Math.PI, a1 = a0 + Math.PI / 11 - .04, R = 210, R2 = 178;
+    st += '<path d="M' + f(225 + Math.cos(a0) * R2) + ',' + f(470 + Math.sin(a0) * R2) + ' L' + f(225 + Math.cos(a0) * R) + ',' + f(470 + Math.sin(a0) * R) + ' A' + R + ',' + R + ' 0 0 1 ' + f(225 + Math.cos(a1) * R) + ',' + f(470 + Math.sin(a1) * R) + ' L' + f(225 + Math.cos(a1) * R2) + ',' + f(470 + Math.sin(a1) * R2) + ' A' + R2 + ',' + R2 + ' 0 0 0 ' + f(225 + Math.cos(a0) * R2) + ',' + f(470 + Math.sin(a0) * R2) + 'Z" fill="' + (k % 2 ? '#5A2A1C' : '#4A2216') + '"/>'; }
+  s += st;
+  s += '<circle cx="225" cy="470" r="178" fill="' + vg('#7A2A18', '#2A0C08') + '"/>';
+  s += '<circle class="no" cx="225" cy="470" r="178" fill="' + rg(225, 430, 190, '#FF9A4A', .55) + '"/>';
+  s += '<circle class="no" cx="225" cy="470" r="230" fill="' + rg(225, 420, 300, '#FFB25B', .16) + '"/>';
+  return s + grain(1);
 }
-P['logs'] = function () { return '<path d="M150,440 l150,-40 M150,400 l150,40" stroke="#3A120C" stroke-width="12" stroke-linecap="round"/>'; };
+P['logs'] = function () { return '<path d="M150,440 l150,-40 M150,400 l150,40" stroke="#3A120C" stroke-width="13" stroke-linecap="round"/><path d="M150,438 l150,-40 M150,398 l150,40" stroke="#7A3A1E" stroke-width="4" stroke-linecap="round" opacity=".7"/><ellipse cx="225" cy="432" rx="70" ry="9" fill="#FF8A3A" opacity=".45"/>'; };
 P['flame-outer'] = function () { return '<path d="M60,4 C120,74 135,114 105,174 C90,204 30,204 15,174 C-15,114 5,74 60,4Z" transform="translate(0,0)" fill="#E8612A"/>'; };   // 120x200
 P['flame-mid'] = function () { return '<path d="M42,2 C76,42 82,70 64,110 C54,130 24,130 16,110 C2,74 14,40 42,2Z" fill="#F7A23B"/>'; };  // 84x124
 P['flame-inner'] = function () { return '<path d="M20,2 C38,24 40,40 30,60 C24,70 12,70 8,60 C2,42 8,28 20,2Z" fill="#FFE07A"/>'; };     // 40x70
 
 // ------------------------------------------------------------------ Starlit Night (the moon is separate: tonight's real phase)
 function starlit(season) {
-  var s = '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0D1233"/><stop offset="1" stop-color="#3B2F6E"/></linearGradient></defs>';
-  s += '<rect class="no" width="450" height="450" fill="url(#g)"/>';
+  var s = '<rect class="no" width="450" height="450" fill="' + vg('#0A0F2C', '#3B2F6E') + '"/>';
+  DEFS += '<filter id="mwb" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="16"/></filter>';
+  s += '<path class="no" d="M-40,60 C120,120 260,170 500,300" stroke="#B9A8FF" stroke-opacity=".2" stroke-width="90" fill="none" filter="url(#mwb)"/>';
   var r = rng(9);
-  for (var i = 0; i < 60; i++) s += '<circle class="no" cx="' + f(r() * 450) + '" cy="' + f(r() * 250) + '" r="' + f(.6 + r() * 1.2) + '" fill="#ECE6D8" opacity="' + f(.3 + r() * .6) + '"/>';
+  for (var i = 0; i < 70; i++) s += '<circle class="no" cx="' + f(r() * 450) + '" cy="' + f(r() * 250) + '" r="' + f(.6 + r() * 1.2) + '" fill="#ECE6D8" opacity="' + f(.3 + r() * .6) + '"/>';
+  for (i = 0; i < 90; i++) { var t = r(); s += '<circle class="no" cx="' + f(-40 + t * 540 + (r() - .5) * 40) + '" cy="' + f(60 + t * 240 + (r() - .5) * 40) + '" r="' + f(.4 + r() * .5) + '" fill="#E6E4FF" opacity="' + f(.2 + r() * .4) + '"/>'; }
   var far = [[40, 280], [90, 300], [150, 250], [210, 296], [260, 270], [330, 230], [390, 280], [440, 262]];
-  s += '<path d="' + peaks(330, far) + '" fill="#4B3F8A"/>';
+  s += '<path d="' + peaks(330, far) + '" fill="' + vg('#6A5CB0', '#3A3078') + '"/>';
   if (season === 'winter') far.forEach(function (p, k) {   // snow on the far peaks
     if (k % 2 === 0 && p[1] < 290) s += '<path class="no" d="M' + (p[0] - 14) + ',' + (p[1] + 18) + ' L' + p[0] + ',' + p[1] + ' L' + (p[0] + 14) + ',' + (p[1] + 18) + ' L' + (p[0] + 5) + ',' + (p[1] + 13) + ' L' + p[0] + ',' + (p[1] + 19) + ' L' + (p[0] - 6) + ',' + (p[1] + 13) + 'Z" fill="#E9E6F6"/>';
   });
-  s += '<path d="' + peaks(360, [[30, 330], [110, 300], [170, 334], [240, 296], [300, 330], [380, 306], [455, 340]]) + '" fill="#2B2560"/>';
-  s += '<path d="' + peaks(396, [[60, 380], [140, 356], [220, 384], [300, 362], [380, 388], [455, 370]]) + '" fill="' + (season === 'winter' ? '#2A2A55' : '#15123A') + '"/>';
+  s += '<path d="' + peaks(360, [[30, 330], [110, 300], [170, 334], [240, 296], [300, 330], [380, 306], [455, 340]]) + '" fill="' + vg('#3B3478', '#221D52') + '"/>';
+  // the lake, the ranges upside down in it, and a mist on the water
+  s += '<rect class="no" x="0" y="362" width="450" height="100" fill="' + vg('#2A2766', '#0C0A26') + '"/>';
+  s += '<path class="no" d="' + peaks(360, [[30, 330], [110, 300], [170, 334], [240, 296], [300, 330], [380, 306], [455, 340]]) + '" fill="#4B3F8A" opacity=".28" transform="translate(0,724) scale(1,-1)"/>';
+  s += '<rect class="no" x="0" y="361" width="450" height="1.5" fill="#AEB8E8" opacity=".4"/>';
+  s += '<rect class="no" x="0" y="364" width="450" height="26" fill="' + vg('#B9C2EE', '#B9C2EE') + '" opacity=".1"/>';
+  s += '<path d="M-5,460 L-5,400 C60,388 140,384 220,392 C300,398 360,396 455,388 L455,460Z" fill="' + (season === 'winter' ? vg('#3A3A6A', '#22224A') : vg('#1A1648', '#0A0822')) + '"/>';
   // a little cabin with a lit window by the lake shore
+  s += '<circle class="no" cx="340" cy="398" r="34" fill="' + rg(340, 398, 34, '#FFC867', .35) + '"/>';
   s += '<path d="M318,392 L340,374 L362,392 L362,410 L318,410Z" fill="#0E0C28"/><rect class="no" x="334" y="394" width="10" height="8" fill="#FFC867"/>';
-  return s;
+  return s + grain(.7);
 }
 function moon(phase, big) {   // northern view, lit on the right while waxing
   var cx = big / 2, cy = big / 2, rr = big / 2 - 2;
@@ -102,23 +137,34 @@ var ELVEN = {
   winter: ['#C9D8DC', '#E6F0F2', '#A9BEC4', '#FFFFFF'],
 };
 function elven(season) {
-  var s = '<defs><linearGradient id="e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#04080A"/><stop offset="1" stop-color="#0B2A31"/></linearGradient></defs>';
-  s += '<rect class="no" width="450" height="450" fill="url(#e)"/>';
+  var s = '<rect class="no" width="450" height="450" fill="' + vg('#04080A', '#0B2A31') + '"/>';
   var r = rng(12);
   for (var i = 0; i < 40; i++) s += '<circle class="no" cx="' + f(r() * 450) + '" cy="' + f(r() * 200) + '" r="' + f(.5 + r()) + '" fill="#E6F4F6" opacity="' + f(.3 + r() * .5) + '"/>';
+  // far ridges in the mist
+  s += '<path class="no" d="' + peaks(330, [[0, 300], [70, 280], [140, 296], [225, 270], [310, 294], [380, 278], [455, 300]]) + '" fill="' + vg('#18323A', '#0D1C21') + '"/>';
+  s += '<rect class="no" x="0" y="300" width="450" height="60" fill="' + vg('#9FC7D0', '#9FC7D0') + '" opacity=".07"/>';
   var knoll = season === 'winter' ? ['#3E6A72', '#6F9DA3', '#B9D3D6'] : ['#0F4A52', '#1B7076', '#3FA0A2'];
-  s += '<ellipse cx="225" cy="470" rx="320" ry="140" fill="' + knoll[0] + '"/><ellipse cx="225" cy="480" rx="240" ry="96" fill="' + knoll[1] + '"/><ellipse class="no" cx="225" cy="492" rx="150" ry="62" fill="' + knoll[2] + '"/>';
-  // two slender silver trees at the edges, trunks curving in, soft round crowns of leaves
-  var rl = rng(77), col = ELVEN[season];
+  s += '<ellipse cx="225" cy="470" rx="320" ry="140" fill="' + vg(mix(knoll[0], '#FFFFFF', .08), mix(knoll[0], '#05141A', .4)) + '"/><ellipse cx="225" cy="480" rx="240" ry="96" fill="' + vg(mix(knoll[1], '#FFFFFF', .1), mix(knoll[1], '#05141A', .35)) + '"/><ellipse class="no" cx="225" cy="492" rx="150" ry="62" fill="' + vg(mix(knoll[2], '#FFFFFF', .12), mix(knoll[2], '#05141A', .3)) + '"/>';
+  // two mallorn trees at the edges: trunks that flare at the root, silver bark, crowns in tiers
+  var col = ELVEN[season], bark = vg('#E4EEF0', '#9DB2B8');
   [-1, 1].forEach(function (side) {
     var bx = 225 + side * 150, tx = 225 + side * 100;   // the trunks stand inside the complications
-    s += '<path d="M' + (bx - side * 10) + ',470 C' + (bx - side * 4) + ',360 ' + (tx + side * 22) + ',250 ' + tx + ',150 C' + (tx + side * 10) + ',250 ' + (bx + side * 12) + ',360 ' + (bx + side * 14) + ',470Z" fill="#C9D8DC"/>';
+    s += '<path d="M' + (bx - side * 10) + ',470 C' + (bx - side * 4) + ',360 ' + (tx + side * 22) + ',250 ' + tx + ',150 C' + (tx + side * 10) + ',250 ' + (bx + side * 12) + ',360 ' + (bx + side * 14) + ',470Z" fill="' + bark + '"/>';
+    s += '<path d="M' + (bx - side * 34) + ',474 Q' + (bx - side * 10) + ',464 ' + (bx - side * 7) + ',420 L' + (bx + side * 13) + ',420 Q' + (bx + side * 16) + ',462 ' + (bx + side * 38) + ',474Z" fill="' + bark + '"/>';
+    s += '<path class="no" d="M' + (bx + side * 4) + ',466 C' + (bx + side * 2) + ',380 ' + (tx + side * 16) + ',262 ' + (tx + side * 4) + ',176" stroke="#8FA6AD" stroke-width="2" fill="none" opacity=".6"/>';
     s += '<path d="M' + (tx + side * 10) + ',300 q' + side * 18 + ',-8 ' + side * 30 + ',-34" stroke="#C9D8DC" stroke-width="5" fill="none" stroke-linecap="round"/>';
-    var leaves = season === 'winter' ? 8 : 14;
-    for (var k = 0; k < 14; k++) { var a = rl() * Math.PI * 2, d = Math.sqrt(rl()) * 46, rr = 14 + rl() * 10; if (k < leaves) s += '<circle class="' + (k % 3 ? 'no' : '') + '" cx="' + f(tx + side * 44 + Math.cos(a) * d * 1.05) + '" cy="' + f(128 + Math.sin(a) * d * .8) + '" r="' + f(rr) + '" fill="' + col[k % 4] + '" opacity=".85"/>'; }
-    for (k = 0; k < 5; k++) { a = rl() * Math.PI * 2; d = Math.sqrt(rl()) * 30; rr = 9 + rl() * 6; if (season !== 'winter' || k < 2) s += '<circle class="no" cx="' + f(tx + side * 40 + Math.cos(a) * d) + '" cy="' + f(262 + Math.sin(a) * d * .7) + '" r="' + f(rr) + '" fill="' + col[k % 2 ? 3 : 1] + '" opacity=".8"/>'; }
+    var tiers = season === 'winter' ? [[140, 58, 14, 1], [108, 44, 13, 3]] : [[146, 62, 16, 0], [116, 50, 15, 1], [88, 36, 13, 2]];
+    tiers.forEach(function (t, k) {
+      var cy = t[0], half = t[1], th = t[2], c = col[t[3] % 4], cx = tx + side * 30, g = 'x' + (gid++);
+      DEFS += '<linearGradient id="' + g + '" gradientUnits="userSpaceOnUse" x1="0" y1="' + (cy - th * 2.2) + '" x2="0" y2="' + (cy + th) + '"><stop offset="0" stop-color="' + mix(c, '#FFFFFF', .3) + '"/><stop offset=".55" stop-color="' + c + '"/><stop offset="1" stop-color="' + mix(c, '#0E1A20', .45) + '"/></linearGradient>';
+      var lobes = '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + half + '" ry="' + th + '"/>';
+      for (var j = 0; j < 5; j++) { var fx = j / 4 * 2 - 1; lobes += '<ellipse cx="' + f(cx + fx * half * .74) + '" cy="' + f(cy - th * (.55 + (1 - Math.abs(fx)) * .55)) + '" rx="' + f(half * (.3 + (1 - Math.abs(fx)) * .1)) + '" ry="' + f(th * (.9 + (1 - Math.abs(fx)) * .3)) + '"/>'; }
+      s += '<g class="' + (k ? 'no' : '') + '" fill="url(#' + g + ')" opacity=".9">' + lobes + '</g>';
+    });
+    // the lower crown, where the branch reaches out
+    s += '<g class="no" fill="' + col[3] + '" opacity=".85"><ellipse cx="' + (tx + side * 40) + '" cy="262" rx="24" ry="8"/><ellipse cx="' + (tx + side * 34) + '" cy="254" rx="12" ry="7"/><ellipse cx="' + (tx + side * 48) + '" cy="255" rx="10" ry="6"/></g>';
   });
-  return s;
+  return s + grain(.6);
 }
 P['elven-star'] = function () {  // 80px: Eärendil's star, pulsing
   return '<defs><radialGradient id="h"><stop offset="0" stop-color="#BFE3EC" stop-opacity=".4"/><stop offset="1" stop-color="#BFE3EC" stop-opacity="0"/></radialGradient></defs><circle cx="40" cy="40" r="40" fill="url(#h)"/>' +
@@ -158,6 +204,7 @@ P['redbook'] = redbook;
 P['redbook-outline-fire'] = function () { return '<path d="M225,250 C285,320 300,360 270,420 C255,450 195,450 180,420 C150,360 170,320 225,250Z"/>'; };
 
 var body = P[PART] ? P[PART]() : '';
+body = (DEFS ? '<defs>' + DEFS + '</defs>' : '') + body;
 if (OUTLINE && PART === 'redbook') body += P['redbook-outline-fire']() + P['logs']();
 document.body.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"' + (OUTLINE ? ' class="outline"' : '') + '>' +
   (W === 450 && H === 450 ? '<defs><clipPath id="round"><circle cx="225" cy="225" r="225"/></clipPath></defs><g clip-path="url(#round)">' + body + '</g>' : body) + '</svg>';
