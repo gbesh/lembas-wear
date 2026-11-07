@@ -1,0 +1,2 @@
+Broadcasting: Intent { act=com.google.android.wearable.app.DEBUG_SURFACE flg=0x400000 (has extras) }
+Broadcast completed: result=1, data="Favorite Id=[9] Runtime=[2]"
